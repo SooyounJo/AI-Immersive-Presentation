@@ -1,0 +1,99 @@
+export type SceneMode = 'slide' | 'scene';
+
+export interface SlideMedia {
+  /** Server-relative or absolute URL */
+  url: string;
+  /** 'image' | 'video' — inferred from source when added */
+  kind: 'image' | 'video';
+  /** Display name (filename) */
+  name?: string;
+}
+
+export interface SlideLink {
+  url: string;
+  label?: string;
+}
+
+export interface SlideFile {
+  /** Served URL — usually /api/assets/file/... */
+  url: string;
+  name: string;
+  /** Document type hint for icon / open behavior */
+  kind: 'pdf' | 'doc' | 'other';
+  mimeType?: string;
+  /** Bytes — optional metadata for display */
+  size?: number;
+}
+
+export interface Slide {
+  id: number;
+  title: string;
+  content: string;
+  speakerNotes: string;
+  visualType: 'title' | 'bullets' | 'table' | 'quote' | 'image';
+  allowQA: boolean;
+  sceneMode?: SceneMode;
+  autoAdvanceMs?: number;
+  linkedAssetIds?: string[];
+
+  /** Private comment (not shown to audience, only for slide author) */
+  comment?: string;
+  /** External links the agent can reference or that render as chips */
+  links?: SlideLink[];
+  /** Media attachments displayed full-bleed behind content, or inline */
+  media?: SlideMedia[];
+  /** Files (PDF, doc) attached to this slide — rendered as chips */
+  files?: SlideFile[];
+  /**
+   * Short topic labels used by the agent to decide when to navigate here.
+   * Example: ['SDV', 'autonomous driving', 'software update']
+   */
+  labels?: string[];
+}
+
+export type AssetType = 'pdf' | 'image' | 'figma' | 'url' | 'note' | 'video';
+
+export interface Asset {
+  id: string;
+  type: AssetType;
+  name: string;
+  createdAt: number;
+  url?: string;
+  fileUrl?: string;
+  extractedText?: string;
+  note?: string;
+  metadata?: {
+    pageCount?: number;
+    mimeType?: string;
+    size?: number;
+    figmaFileKey?: string;
+    figmaNodeId?: string;
+  };
+}
+
+export interface AgentSettings {
+  voice: string;
+  speakingRate: number;
+  pitch: number;
+  autonomousMode: boolean;
+  autoAdvance: boolean;
+  interruptSensitivity: 'low' | 'medium' | 'high';
+  resumeStrategy: 'continue' | 'recap' | 'next';
+}
+
+export interface Presentation {
+  title: string;
+  systemPrompt: string;
+  knowledge: string;
+  slides: Slide[];
+  assets?: Asset[];
+  agentSettings?: AgentSettings;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
+
+export type AgentMode = 'idle' | 'presenting' | 'qa' | 'listening' | 'speaking';

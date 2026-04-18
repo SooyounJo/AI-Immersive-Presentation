@@ -1,0 +1,289 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Noto+Sans+KR:wght@200;300;400;500;700&display=swap');
+@import "tailwindcss";
+
+/* Genesis-inspired design tokens */
+:root {
+  --gen-black: #0a0a0a;
+  --gen-charcoal: #1a1a1a;
+  --gen-white: #ffffff;
+  --gen-bg: #ffffff;
+  --gen-bg-soft: #fafafa;
+  --gen-bg-gray: #f5f5f5;
+  --gen-border: #e5e5e5;
+  --gen-border-strong: #111111;
+  --gen-text: #111111;
+  --gen-text-sub: #666666;
+  --gen-text-mute: #999999;
+  --gen-accent: #111111;
+
+  --gen-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --gen-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --gen-fast: 240ms var(--gen-ease);
+  --gen-base: 400ms var(--gen-ease);
+  --gen-slow: 700ms var(--gen-ease-out);
+
+  --gen-space-xs: 8px;
+  --gen-space-sm: 16px;
+  --gen-space-md: 32px;
+  --gen-space-lg: 64px;
+  --gen-space-xl: 96px;
+
+  --gen-font-display: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  --gen-font-body: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--gen-font-body);
+  font-weight: 300;
+  color: var(--gen-text);
+  background: var(--gen-bg);
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility classes */
+.gen-display {
+  font-family: var(--gen-font-display);
+  font-weight: 200;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.gen-label {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gen-text-sub);
+}
+
+.gen-hairline {
+  height: 1px;
+  background: var(--gen-border);
+}
+
+.gen-two-lines {
+  position: relative;
+}
+.gen-two-lines::before,
+.gen-two-lines::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gen-black);
+}
+.gen-two-lines::before { top: 0; }
+.gen-two-lines::after { top: 4px; }
+
+/* Button styles */
+.gen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--gen-base);
+  background: transparent;
+  color: var(--gen-text);
+}
+.gen-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.gen-btn-primary {
+  background: var(--gen-black);
+  color: var(--gen-white);
+  border-color: var(--gen-black);
+}
+.gen-btn-primary:hover:not(:disabled) {
+  background: var(--gen-charcoal);
+}
+
+.gen-btn-outline {
+  border-color: var(--gen-black);
+  color: var(--gen-text);
+}
+.gen-btn-outline:hover:not(:disabled) {
+  background: var(--gen-black);
+  color: var(--gen-white);
+}
+
+.gen-btn-ghost:hover:not(:disabled) {
+  background: var(--gen-bg-gray);
+}
+
+/* Input styles */
+.gen-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--gen-border);
+  background: var(--gen-white);
+  font-family: var(--gen-font-body);
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--gen-text);
+  outline: none;
+  transition: border-color var(--gen-fast);
+}
+.gen-input:focus {
+  border-color: var(--gen-black);
+}
+.gen-input::placeholder {
+  color: var(--gen-text-mute);
+}
+
+textarea.gen-input {
+  resize: none;
+  line-height: 1.6;
+}
+
+/* Slide reveal animation */
+@keyframes gen-slide-in {
+  0% { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes gen-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes gen-line-expand {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+
+.gen-reveal {
+  animation: gen-slide-in var(--gen-slow) both;
+}
+.gen-fade {
+  animation: gen-fade-in var(--gen-slow) both;
+}
+.gen-line {
+  transform-origin: left center;
+  animation: gen-line-expand var(--gen-slow) both;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gen-border);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gen-text-mute);
+}
+
+/* Prose overrides for slide content */
+.gen-prose h1 {
+  font-weight: 200;
+  font-size: clamp(48px, 7vw, 96px);
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  margin: 0 0 0.5em;
+}
+.gen-prose h2 {
+  font-weight: 300;
+  font-size: clamp(32px, 4vw, 56px);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0 0 0.6em;
+}
+.gen-prose h3 {
+  font-weight: 300;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  color: var(--gen-text-sub);
+  margin: 0 0 0.5em;
+}
+.gen-prose p {
+  font-weight: 300;
+  font-size: 18px;
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  margin: 0 0 1em;
+}
+.gen-prose ul {
+  list-style: none;
+  padding: 0;
+  margin: 1em 0;
+}
+.gen-prose ul li {
+  font-weight: 300;
+  font-size: 18px;
+  line-height: 1.8;
+  padding-left: 28px;
+  position: relative;
+  margin-bottom: 0.4em;
+}
+.gen-prose ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.85em;
+  width: 16px;
+  height: 1px;
+  background: var(--gen-black);
+}
+.gen-prose blockquote {
+  border-left: 1px solid var(--gen-black);
+  padding: 8px 0 8px 32px;
+  margin: 2em 0;
+  font-weight: 200;
+  font-size: clamp(24px, 3vw, 36px);
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  font-style: normal;
+  color: var(--gen-text);
+}
+.gen-prose strong {
+  font-weight: 500;
+}
+.gen-prose em {
+  font-style: italic;
+  color: var(--gen-text-sub);
+}
+.gen-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-weight: 300;
+}
+.gen-prose th {
+  text-align: left;
+  padding: 14px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--gen-black);
+  color: var(--gen-text);
+}
+.gen-prose td {
+  padding: 14px 12px;
+  font-size: 15px;
+  border-bottom: 1px solid var(--gen-border);
+}

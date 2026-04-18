@@ -1,0 +1,36 @@
+# deps
+node_modules/
+client/node_modules/
+
+# builds
+dist/
+client/dist/
+
+# env & credentials
+.env
+.env.*
+!.env.example
+google-credentials.json
+*.pem
+
+# user-generated data (projects, uploaded assets, logs)
+server/data/
+!server/data/.gitkeep
+
+# editor
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# misc
+coverage/
+.tmp/
+.cache/
