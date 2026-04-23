@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import type { Presentation, Slide, SlideMedia, SlideLink, SlideFile, ChatMessage, AgentMode } from '../types';
+import type { Presentation, Slide, SlideMedia, SlideLink, SlideFile, ChatMessage, AgentMode, SlideAnnotation } from '../types';
 
 export type AppMode = 'present' | 'design';
 export type UiThemeMode = 'morning' | 'night';
+export type PresentTool = 'pointer' | 'draw' | 'text' | 'comment';
 
 const APP_MODE_KEY = 'presentation-agent:appMode';
 const UI_THEME_KEY = 'voix:designTheme';
@@ -30,6 +31,8 @@ interface PresentationState {
   currentSlideIndex: number;
   agentMode: AgentMode;
   appMode: AppMode;
+  activePresentTool: PresentTool;
+  setActivePresentTool: (tool: PresentTool) => void;
   /** Shared with DesignView — presentation chrome follows the same light/dark mood. */
   uiThemeMode: UiThemeMode;
   setUiThemeMode: (mode: UiThemeMode) => void;
@@ -79,6 +82,9 @@ interface PresentationState {
   setSlides: (slides: Slide[]) => void;
 
   // Slide-level media / link / comment helpers
+  addSlideAnnotation: (index: number, annotation: SlideAnnotation) => void;
+  updateSlideAnnotation: (index: number, annotationId: string, patch: Partial<SlideAnnotation>) => void;
+  removeSlideAnnotation: (index: number, annotationId: string) => void;
   addSlideMedia: (index: number, media: SlideMedia) => void;
   removeSlideMedia: (index: number, mediaUrl: string) => void;
   addSlideLink: (index: number, link: SlideLink) => void;
@@ -95,6 +101,8 @@ export const usePresentationStore = create<PresentationState>((set, get) => ({
   currentSlideIndex: 0,
   agentMode: 'idle',
   appMode: readInitialAppMode(),
+  activePresentTool: 'pointer',
+  setActivePresentTool: (tool) => set({ activePresentTool: tool }),
   uiThemeMode: readUiThemeMode(),
   setUiThemeMode: (mode) => {
     if (typeof window !== 'undefined') window.localStorage.setItem(UI_THEME_KEY, mode);
@@ -192,6 +200,37 @@ export const usePresentationStore = create<PresentationState>((set, get) => ({
   setSlides: (slides) => set((s) => s.presentation
     ? { presentation: { ...s.presentation, slides } }
     : s),
+
+  addSlideAnnotation: (index, annotation) => set((s) => {
+    if (!s.presentation) return s;
+    const slides = s.presentation.slides.map((sl, i) => {
+      if (i !== index) return sl;
+      const existing = sl.annotations ?? [];
+      return { ...sl, annotations: [...existing, annotation] };
+    });
+    return { presentation: { ...s.presentation, slides } };
+  }),
+  updateSlideAnnotation: (index, annotationId, patch) => set((s) => {
+    if (!s.presentation) return s;
+    const slides = s.presentation.slides.map((sl, i) => {
+      if (i !== index) return sl;
+      const existing = sl.annotations ?? [];
+      return {
+        ...sl,
+        annotations: existing.map((a) => (a.id === annotationId ? { ...a, ...patch } : a)),
+      };
+    });
+    return { presentation: { ...s.presentation, slides } };
+  }),
+  removeSlideAnnotation: (index, annotationId) => set((s) => {
+    if (!s.presentation) return s;
+    const slides = s.presentation.slides.map((sl, i) => {
+      if (i !== index) return sl;
+      const existing = sl.annotations ?? [];
+      return { ...sl, annotations: existing.filter((a) => a.id !== annotationId) };
+    });
+    return { presentation: { ...s.presentation, slides } };
+  }),
 
   addSlideMedia: (index, media) => set((s) => {
     if (!s.presentation) return s;

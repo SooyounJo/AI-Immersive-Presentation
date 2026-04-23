@@ -63,6 +63,22 @@ export interface SlideTextStyle {
   motionSpeed?: number;
 }
 
+export interface SlideAnnotation {
+  id: string;
+  type: 'draw' | 'text' | 'comment' | 'image';
+  x: number;
+  y: number;
+  /** For draw: array of points in percentage relative to slide width/height */
+  points?: { x: number; y: number }[];
+  /** For text and comment */
+  text?: string;
+  /** For image */
+  url?: string;
+  width?: number;
+  height?: number;
+  color?: string;
+}
+
 export interface Slide {
   id: number;
   templateId?: string;
@@ -89,11 +105,10 @@ export interface Slide {
   templateTextBlocks?: TemplateTextBlock[];
   /** Preset text style controls from right panel */
   textStyle?: SlideTextStyle;
-  /**
-   * Short topic labels used by the agent to decide when to navigate here.
-   * Example: ['SDV', 'autonomous driving', 'software update']
-   */
+  /** Short topic labels used by the agent to decide when to navigate here. */
   labels?: string[];
+  /** Presentation annotations: freehand drawings, text boxes, comments, images */
+  annotations?: SlideAnnotation[];
 }
 
 export type AssetType = 'pdf' | 'image' | 'figma' | 'url' | 'note' | 'video';

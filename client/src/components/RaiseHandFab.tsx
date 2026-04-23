@@ -2,13 +2,12 @@ import { usePresentationStore } from '../stores/presentationStore';
 import { useRaiseHand } from '../hooks/useRaiseHand';
 import { IconHand, IconMic } from './icons';
 
-export function RaiseHandFab() {
+export function RaiseHandFab({ bottomOffset = 84 }: { bottomOffset?: number }) {
   const { appMode, dialogueOpen } = usePresentationStore();
   const { isHandRaised, toggle } = useRaiseHand();
 
   if (appMode !== 'present') return null;
 
-  // Offset when dialogue drawer is open
   const rightOffset = dialogueOpen ? 384 + 32 : 32;
 
   return (
@@ -16,74 +15,56 @@ export function RaiseHandFab() {
       style={{
         position: 'fixed',
         right: rightOffset,
-        bottom: 96,
+        bottom: bottomOffset,
         zIndex: 40,
         display: 'flex',
-        alignItems: 'flex-end',
-        gap: 16,
-        transition: 'right 500ms var(--gen-ease)',
+        alignItems: 'center',
+        gap: 12,
+        transition: 'right 500ms var(--gen-ease), bottom 400ms var(--gen-ease)',
       }}
     >
       {/* Mic icon */}
-      <div
+      <button
+        type="button"
+        aria-label="Microphone"
         style={{
           width: 44,
           height: 44,
+          borderRadius: '50%',
+          background: 'transparent',
+          border: '1px solid rgba(255,255,255,0.18)',
+          color: '#ffffff',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#ffffff',
           cursor: 'pointer',
+          backdropFilter: 'blur(8px)',
         }}
       >
-        <IconMic size={24} />
-      </div>
+        <IconMic size={20} />
+      </button>
 
       {/* Raise Hand box */}
       <button
+        type="button"
         onClick={toggle}
+        aria-label="Raise Hand"
         style={{
-          width: 80,
-          height: 100,
-          background: '#ffffff',
-          borderRadius: 8,
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          background: isHandRaised ? '#ffffff' : 'transparent',
+          border: '1px solid rgba(255,255,255,0.18)',
+          color: isHandRaised ? '#000000' : '#ffffff',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 8,
-          border: 'none',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
           cursor: 'pointer',
-          padding: 0,
+          backdropFilter: 'blur(8px)',
+          transition: 'all 0.2s ease',
         }}
       >
-        <div
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: '50%',
-            border: '1px solid #000000',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#000000',
-          }}
-        >
-          <IconHand size={22} />
-        </div>
-        <div
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            color: '#000000',
-            lineHeight: 1.1,
-            textAlign: 'center',
-            letterSpacing: '0.05em',
-          }}
-        >
-          RAISE<br />HAND
-        </div>
+        <IconHand size={20} />
       </button>
 
       {/* Listening indicator (full screen border) */}

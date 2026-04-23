@@ -11,6 +11,7 @@ function IconMenu(props: any) {
   );
 }
 import { SlideBackgroundLayer } from './backgrounds/OglBackgrounds';
+import { SlideAnnotationsOverlay } from './SlideAnnotationsOverlay';
 
 /**
  * Multi-layer composition order (back to front):
@@ -315,6 +316,9 @@ export function SlideView({
           />
         ))}
       </div>
+
+      {/* LAYER 8 — annotations overlay */}
+      <SlideAnnotationsOverlay />
 
       {/* Chip hover style injected once */}
       <style>{`
