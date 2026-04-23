@@ -1,6 +1,6 @@
 import { useProjectsStore } from './stores/projectsStore';
 
-export const API_HOST = 'http://localhost:3002';
+export const API_HOST = 'http://localhost:3000';
 export const API_ROOT = `${API_HOST}/api`;
 
 /** Base URL for the current project's scoped endpoints. Throws if no project. */

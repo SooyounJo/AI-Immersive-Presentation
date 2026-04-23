@@ -7,7 +7,7 @@ export interface Project {
   updatedAt: number;
 }
 
-const API = 'http://localhost:3002/api/projects';
+const API = 'http://localhost:3000/api/projects';
 const LS_KEY = 'presentation-agent:lastProjectId';
 
 interface ProjectsState {
@@ -38,9 +38,8 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
     set({ loading: true });
     try {
       const list = await fetch(API).then((r) => r.json()) as Project[];
-      const saved = localStorage.getItem(LS_KEY);
-      const current = saved && list.some((p) => p.id === saved) ? saved : null;
-      set({ projects: list, currentProjectId: current, loading: false, error: null });
+      // Always start from landing page on app launch.
+      set({ projects: list, currentProjectId: null, loading: false, error: null });
     } catch (e: any) {
       set({ error: e.message, loading: false });
     }

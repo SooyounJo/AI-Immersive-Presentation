@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import type { Presentation, Slide, SlideMedia, SlideLink, SlideFile, ChatMessage, AgentMode } from '../types';
 
 export type AppMode = 'present' | 'design';
+const APP_MODE_KEY = 'presentation-agent:appMode';
+
+function readInitialAppMode(): AppMode {
+  if (typeof window === 'undefined') return 'design';
+  const saved = window.localStorage.getItem(APP_MODE_KEY);
+  return saved === 'present' || saved === 'design' ? saved : 'design';
+}
 
 export interface InterruptContext {
   slideTitle: string;
@@ -74,7 +81,7 @@ export const usePresentationStore = create<PresentationState>((set, get) => ({
   presentation: null,
   currentSlideIndex: 0,
   agentMode: 'idle',
-  appMode: 'present',
+  appMode: readInitialAppMode(),
   chatMessages: [],
   isLoading: false,
   streamingText: '',
@@ -107,7 +114,12 @@ export const usePresentationStore = create<PresentationState>((set, get) => ({
   },
   goToSlide: (index) => set({ currentSlideIndex: index, chatMessages: [], streamingText: '' }),
   setAgentMode: (mode) => set({ agentMode: mode }),
-  setAppMode: (mode) => set({ appMode: mode }),
+  setAppMode: (mode) => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(APP_MODE_KEY, mode);
+    }
+    set({ appMode: mode });
+  },
   addMessage: (msg) => set((s) => ({ chatMessages: [...s.chatMessages, msg] })),
   setLoading: (loading) => set({ isLoading: loading }),
   setStreamingText: (text) => set({ streamingText: text }),

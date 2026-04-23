@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 
-const API_BASE = 'http://localhost:3002/api';
+const API_BASE = 'http://localhost:3000/api';
 
 export function useVoice() {
   const [isRecording, setIsRecording] = useState(false);

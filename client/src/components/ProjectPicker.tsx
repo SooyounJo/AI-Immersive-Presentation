@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useProjectsStore, type Project } from '../stores/projectsStore';
+import { usePresentationStore } from '../stores/presentationStore';
 import { IconPlus, IconTrash, IconArrowRight } from './icons';
-import { CosmicBackground } from './CosmicBackground';
+import { Particles } from './Particles';
 
 export function ProjectPicker() {
   const { projects, create, enter, rename, remove, init } = useProjectsStore();
+  const { setAppMode } = usePresentationStore();
   const [newName, setNewName] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -18,6 +20,7 @@ export function ProjectPicker() {
     try {
       const p = await create(name.trim());
       setNewName('');
+      setAppMode('design');
       enter(p.id);
     } finally {
       setCreating(false);
@@ -42,7 +45,17 @@ export function ProjectPicker() {
       style={{ background: '#050509', color: '#ffffff' }}
     >
       {/* Cosmic starfield background */}
-      <CosmicBackground />
+      <Particles
+        particleColors={['#ffffff']}
+        particleCount={360}
+        particleSpread={10}
+        speed={0.045}
+        particleBaseSize={100}
+        moveParticlesOnHover
+        alphaParticles={false}
+        disableRotation={false}
+        pixelRatio={1}
+      />
 
       {/* Top bar — VOIX brand mark */}
       <div
@@ -77,11 +90,11 @@ export function ProjectPicker() {
                 marginBottom: 18,
               }}
             >
-              Projects
+              AI-Immersive Presentation
             </div>
             <h1
               style={{
-                fontSize: 28,
+                fontSize: 46,
                 fontWeight: 200,
                 letterSpacing: '-0.01em',
                 lineHeight: 1.3,
@@ -91,7 +104,6 @@ export function ProjectPicker() {
             >
               Choose a project,<br />or begin a new one.
             </h1>
-            <div style={{ width: 40, height: 1, background: 'rgba(255,255,255,0.7)' }} />
           </div>
 
           {/* Create new */}
@@ -101,9 +113,10 @@ export function ProjectPicker() {
               onSubmit={(e) => { e.preventDefault(); handleCreate(newName); }}
               className="flex"
               style={{
-                border: '1px solid rgba(255,255,255,0.24)',
-                background: 'rgba(255,255,255,0.04)',
-                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.28)',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04))',
+                backdropFilter: 'blur(14px)',
+                boxShadow: '0 12px 30px rgba(0,0,0,0.28)',
               }}
             >
               <input
@@ -131,15 +144,16 @@ export function ProjectPicker() {
                   fontWeight: 500,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  background: '#ffffff',
-                  color: '#0a0a0a',
-                  border: 'none',
+                  background: 'rgba(255,255,255,0.18)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.35)',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
                   opacity: !newName.trim() || creating ? 0.35 : 1,
                   transition: 'opacity var(--gen-fast)',
+                  backdropFilter: 'blur(8px)',
                 }}
               >
                 <IconPlus size={12} />
@@ -169,9 +183,10 @@ export function ProjectPicker() {
             ) : (
               <div
                 style={{
-                  border: '1px solid rgba(255,255,255,0.18)',
-                  background: 'rgba(255,255,255,0.03)',
-                  backdropFilter: 'blur(6px)',
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  background: 'linear-gradient(140deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03))',
+                  backdropFilter: 'blur(12px)',
+                  boxShadow: '0 16px 36px rgba(0,0,0,0.22)',
                 }}
               >
                 {projects.map((p, i) => (
@@ -187,8 +202,13 @@ export function ProjectPicker() {
                       cursor: 'pointer',
                       transition: 'background var(--gen-fast)',
                     }}
-                    onClick={() => { if (!renamingId) enter(p.id); }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                    onClick={() => {
+                      if (!renamingId) {
+                        setAppMode('design');
+                        enter(p.id);
+                      }
+                    }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                   >
                     <div
@@ -262,10 +282,11 @@ export function ProjectPicker() {
                           fontSize: 9,
                           letterSpacing: '0.14em',
                           textTransform: 'uppercase',
-                          background: 'none',
-                          border: '1px solid rgba(255,255,255,0.24)',
-                          color: 'rgba(255,255,255,0.7)',
+                          background: 'rgba(255,255,255,0.12)',
+                          border: '1px solid rgba(255,255,255,0.3)',
+                          color: 'rgba(255,255,255,0.9)',
                           cursor: 'pointer',
+                          backdropFilter: 'blur(8px)',
                         }}
                       >
                         Rename
@@ -278,12 +299,13 @@ export function ProjectPicker() {
                         }}
                         style={{
                           padding: '5px 9px',
-                          background: 'none',
-                          border: '1px solid rgba(255,255,255,0.24)',
-                          color: 'rgba(255,255,255,0.7)',
+                          background: 'rgba(255,255,255,0.12)',
+                          border: '1px solid rgba(255,255,255,0.3)',
+                          color: 'rgba(255,255,255,0.9)',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
+                          backdropFilter: 'blur(8px)',
                         }}
                         title="Delete"
                       >

@@ -25,6 +25,13 @@ export interface SlideFile {
   size?: number;
 }
 
+export type BackgroundPresetKind = 'darkVeil' | 'grainient' | 'particles' | 'iridescence';
+
+export interface SlideBackground {
+  kind: BackgroundPresetKind;
+  params?: Record<string, number | boolean | string>;
+}
+
 export interface Slide {
   id: number;
   title: string;
@@ -44,6 +51,8 @@ export interface Slide {
   media?: SlideMedia[];
   /** Files (PDF, doc) attached to this slide — rendered as chips */
   files?: SlideFile[];
+  /** Animated background preset config */
+  background?: SlideBackground;
   /**
    * Short topic labels used by the agent to decide when to navigate here.
    * Example: ['SDV', 'autonomous driving', 'software update']

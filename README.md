@@ -24,7 +24,7 @@ cd client && npm install && cd ..
 cp .env.example .env
 # edit .env and add your OPENAI_API_KEY
 
-# 3. Run (starts server on :3002 and client on :5173)
+# 3. Run (starts server on :3000 and client on :5173)
 npm run dev
 ```
 

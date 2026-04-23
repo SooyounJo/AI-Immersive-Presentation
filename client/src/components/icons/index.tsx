@@ -1,213 +1,59 @@
-/**
- * One UI Design Kit inspired icon set — recreated as SVGs from Figma nodes:
- *   Images       799:2044
- *   Web          340:8897
- *   ArrowDown    340:8893
- *   ArrowRight   340:8891
- *   Settings     340:8610
- *
- * All icons: 24×24 viewBox, strokeWidth 1.5, currentColor — theme-aware.
- */
-import type { SVGProps } from 'react';
+import type { ImgHTMLAttributes } from 'react';
 
-type IconProps = SVGProps<SVGSVGElement> & { size?: number | string };
+import iconAdd from '../../assets/icons/add.svg';
+import iconArrowDown from '../../assets/icons/arrow-down.svg';
+import iconArrowLeft from '../../assets/icons/arrow-left.svg';
+import iconArrowRight from '../../assets/icons/arrow-right.svg';
+import iconClose from '../../assets/icons/close.svg';
+import iconComment from '../../assets/icons/comment.svg';
+import iconHand from '../../assets/icons/hand.svg';
+import iconImages from '../../assets/icons/images.svg';
+import iconLink from '../../assets/icons/link-attach.svg';
+import iconMic from '../../assets/icons/mic.svg';
+import iconPause from '../../assets/icons/pause.svg';
+import iconPdf from '../../assets/icons/pdf.svg';
+import iconPlay from '../../assets/icons/play.svg';
+import iconSend from '../../assets/icons/send.svg';
+import iconSettings from '../../assets/icons/settings-grid.svg';
+import iconTrash from '../../assets/icons/trash.svg';
+import iconUpload from '../../assets/icons/upload.svg';
+import iconVideo from '../../assets/icons/video.svg';
+import iconWeb from '../../assets/icons/web-home.svg';
 
-function base(size: number | string = 24, props: SVGProps<SVGSVGElement> = {}): SVGProps<SVGSVGElement> {
-  return {
-    width: size,
-    height: size,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.5,
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-    ...props,
-  };
-}
+type IconProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
+  size?: number | string;
+};
+const UNIFIED_ICON_SIZE = 14;
 
-export function IconImages({ size, ...props }: IconProps) {
+function IconAsset({ src, size: _size, style, alt = '', ...props }: IconProps & { src: string }) {
   return (
-    <svg {...base(size, props)}>
-      {/* Back image */}
-      <rect x="7" y="3" width="14" height="14" rx="1.5" />
-      {/* Small sun + mountain inside */}
-      <circle cx="11" cy="7.5" r="1" />
-      <path d="M21 13 L16 9 L11 14" />
-      {/* Front image (offset) */}
-      <rect x="3" y="7" width="14" height="14" rx="1.5" fill="currentColor" fillOpacity="0.08" />
-    </svg>
+    <img
+      src={src}
+      alt={alt}
+      width={UNIFIED_ICON_SIZE}
+      height={UNIFIED_ICON_SIZE}
+      style={{ width: UNIFIED_ICON_SIZE, height: UNIFIED_ICON_SIZE, objectFit: 'contain', ...style }}
+      {...props}
+    />
   );
 }
 
-export function IconWeb({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M3.5 12 H20.5" />
-      <path d="M12 3.5 C15 7 15 17 12 20.5 C9 17 9 7 12 3.5 Z" />
-      <path d="M4.5 8 H19.5 M4.5 16 H19.5" opacity="0.7" />
-    </svg>
-  );
-}
-
-export function IconArrowDown({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M6 9 L12 15 L18 9" />
-    </svg>
-  );
-}
-
-export function IconArrowRight({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M9 6 L15 12 L9 18" />
-    </svg>
-  );
-}
-
-export function IconArrowLeft({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M15 6 L9 12 L15 18" />
-    </svg>
-  );
-}
-
-export function IconSettings({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      {/* Gear outer shape — 8 teeth */}
-      <path d="M19.14 12.94c.04-.3.06-.62.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7 7 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.42h-3.84a.48.48 0 0 0-.48.42l-.36 2.54a7 7 0 0 0-1.62.94l-2.39-.96a.5.5 0 0 0-.61.22L2.74 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.05.3-.07.62-.07.94 0 .32.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .61.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54a.48.48 0 0 0 .48.42h3.84a.48.48 0 0 0 .48-.42l.36-2.54a7 7 0 0 0 1.62-.94l2.39.96a.5.5 0 0 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-/* Additional utility icons for the design tab (kept consistent) */
-
-export function IconPlus({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M12 5 V19 M5 12 H19" />
-    </svg>
-  );
-}
-
-export function IconClose({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M6 6 L18 18 M18 6 L6 18" />
-    </svg>
-  );
-}
-
-export function IconTrash({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M4 7 H20" />
-      <path d="M10 4 H14 A1 1 0 0 1 15 5 V7 H9 V5 A1 1 0 0 1 10 4 Z" />
-      <path d="M6 7 L7 20 A1 1 0 0 0 8 21 H16 A1 1 0 0 0 17 20 L18 7" />
-      <path d="M10 11 V17 M14 11 V17" />
-    </svg>
-  );
-}
-
-export function IconPdf({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M6 3 H14 L19 8 V21 H6 Z" />
-      <path d="M14 3 V8 H19" />
-      <text x="8" y="17" fontSize="5" fontWeight="600" fontFamily="Inter" fill="currentColor" stroke="none">PDF</text>
-    </svg>
-  );
-}
-
-export function IconLink({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M10 14 L14 10" />
-      <path d="M9 7 L11 5 A3 3 0 0 1 15 5 L17 7 A3 3 0 0 1 17 11 L15 13" />
-      <path d="M15 17 L13 19 A3 3 0 0 1 9 19 L7 17 A3 3 0 0 1 7 13 L9 11" />
-    </svg>
-  );
-}
-
-export function IconVideo({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <rect x="3" y="6" width="13" height="12" rx="1.5" />
-      <path d="M16 10 L21 7 V17 L16 14 Z" />
-    </svg>
-  );
-}
-
-export function IconComment({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M4 5 H20 A1 1 0 0 1 21 6 V16 A1 1 0 0 1 20 17 H12 L7 21 V17 H4 A1 1 0 0 1 3 16 V6 A1 1 0 0 1 4 5 Z" />
-      <path d="M8 10 H16 M8 13 H13" opacity="0.7" />
-    </svg>
-  );
-}
-
-export function IconMic({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <rect x="9" y="3" width="6" height="12" rx="3" />
-      <path d="M5 11 A7 7 0 0 0 19 11" />
-      <path d="M12 18 V21 M9 21 H15" />
-    </svg>
-  );
-}
-
-export function IconSend({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M3.5 20.5 L21 12 L3.5 3.5 L6 12 L3.5 20.5 Z" />
-      <path d="M6 12 H21" />
-    </svg>
-  );
-}
-
-export function IconUpload({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M12 16 V4" />
-      <path d="M7 9 L12 4 L17 9" />
-      <path d="M4 16 V19 A1 1 0 0 0 5 20 H19 A1 1 0 0 0 20 19 V16" />
-    </svg>
-  );
-}
-
-export function IconPlay({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <path d="M7 4 L20 12 L7 20 Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-export function IconPause({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      <rect x="6" y="4" width="4" height="16" fill="currentColor" />
-      <rect x="14" y="4" width="4" height="16" fill="currentColor" />
-    </svg>
-  );
-}
-
-export function IconHand({ size, ...props }: IconProps) {
-  return (
-    <svg {...base(size, props)}>
-      {/* Simple open palm — 4 fingers + thumb */}
-      <path d="M8 12 V6 A1.3 1.3 0 0 1 10.6 6 V11" />
-      <path d="M10.6 11 V4.5 A1.3 1.3 0 0 1 13.2 4.5 V11" />
-      <path d="M13.2 11 V4.8 A1.3 1.3 0 0 1 15.8 4.8 V11" />
-      <path d="M15.8 11 V7 A1.3 1.3 0 0 1 18.4 7 V14" />
-      {/* Palm / wrist curve */}
-      <path d="M8 12 C8 10 6.5 10 6 11 L5 14 C5 17.5 8 21 12 21 C15.5 21 18.4 18.5 18.4 14" />
-    </svg>
-  );
-}
+export function IconImages(props: IconProps) { return <IconAsset src={iconImages} {...props} />; }
+export function IconWeb(props: IconProps) { return <IconAsset src={iconWeb} {...props} />; }
+export function IconArrowDown(props: IconProps) { return <IconAsset src={iconArrowDown} {...props} />; }
+export function IconArrowRight(props: IconProps) { return <IconAsset src={iconArrowRight} {...props} />; }
+export function IconArrowLeft(props: IconProps) { return <IconAsset src={iconArrowLeft} {...props} />; }
+export function IconSettings(props: IconProps) { return <IconAsset src={iconSettings} {...props} />; }
+export function IconPlus(props: IconProps) { return <IconAsset src={iconAdd} {...props} />; }
+export function IconClose(props: IconProps) { return <IconAsset src={iconClose} {...props} />; }
+export function IconTrash(props: IconProps) { return <IconAsset src={iconTrash} {...props} />; }
+export function IconPdf(props: IconProps) { return <IconAsset src={iconPdf} {...props} />; }
+export function IconLink(props: IconProps) { return <IconAsset src={iconLink} {...props} />; }
+export function IconVideo(props: IconProps) { return <IconAsset src={iconVideo} {...props} />; }
+export function IconComment(props: IconProps) { return <IconAsset src={iconComment} {...props} />; }
+export function IconMic(props: IconProps) { return <IconAsset src={iconMic} {...props} />; }
+export function IconSend(props: IconProps) { return <IconAsset src={iconSend} {...props} />; }
+export function IconUpload(props: IconProps) { return <IconAsset src={iconUpload} {...props} />; }
+export function IconPlay(props: IconProps) { return <IconAsset src={iconPlay} {...props} />; }
+export function IconPause(props: IconProps) { return <IconAsset src={iconPause} {...props} />; }
+export function IconHand(props: IconProps) { return <IconAsset src={iconHand} {...props} />; }

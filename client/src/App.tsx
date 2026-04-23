@@ -6,7 +6,6 @@ import { TranscriptPanel } from './components/TranscriptPanel';
 import { VoiceControl } from './components/VoiceControl';
 import { ControlBar } from './components/ControlBar';
 import { DesignView } from './components/DesignView';
-import { BottomTabs } from './components/BottomTabs';
 import { RaiseHandFab } from './components/RaiseHandFab';
 import { TopPlayButton } from './components/TopPlayButton';
 import { TopToggles } from './components/TopToggles';
@@ -80,7 +79,6 @@ function ProjectApp({ projectName, onLeave }: { projectName?: string; onLeave: (
           </div>
         )}
 
-        <BottomTabs />
       </div>
 
       {appMode === 'present' && <DialogueDrawer open={dialogueOpen} />}
@@ -147,7 +145,7 @@ function TopBar({
 }) {
   return (
     <div
-      className="flex items-center justify-between px-8 py-5"
+      className="flex items-center justify-between px-6 py-2"
       style={{
         borderBottom: '1px solid var(--gen-border)',
         background: 'rgba(255,255,255,0.55)',
@@ -164,8 +162,8 @@ function TopBar({
         title="Back to projects"
         style={{
           display: 'flex',
-          alignItems: 'baseline',
-          gap: 16,
+          alignItems: 'center',
+          gap: 12,
           background: 'none',
           border: 'none',
           padding: 0,
@@ -175,25 +173,51 @@ function TopBar({
       >
         <span
           style={{
-            fontSize: 22,
+            fontSize: 11,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            border: '1px solid var(--gen-border)',
+            padding: '4px 8px',
+            color: 'var(--gen-text-sub)',
+            background: 'rgba(255,255,255,0.7)',
+          }}
+        >
+          Home
+        </span>
+        <span
+          style={{
+            fontSize: 20,
             fontWeight: 200,
-            letterSpacing: '0.32em',
+            letterSpacing: '0.28em',
             textTransform: 'uppercase',
           }}
         >
           VOIX
         </span>
-        <span
-          className="gen-label"
-          style={{ color: 'var(--gen-text-mute)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-        >
-          <span style={{ fontSize: 10 }}>←</span>
-          <span className="truncate" style={{ maxWidth: 220 }}>{projectName || 'Untitled'}</span>
+        <span className="truncate" style={{ maxWidth: 300, fontSize: 13, color: 'var(--gen-text-mute)', fontWeight: 400 }}>
+          {projectName || 'Untitled'}
         </span>
       </button>
 
       <div className="flex items-center gap-3">
         {showToggles && <TopToggles />}
+        <button
+          title="Export presentation"
+          style={{
+            padding: '9px 16px',
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            background: 'var(--gen-white)',
+            color: 'var(--gen-text)',
+            border: '1px solid var(--gen-border-strong)',
+            cursor: 'pointer',
+            transition: 'all var(--gen-fast)',
+          }}
+        >
+          Export
+        </button>
         <TopPlayButton />
       </div>
     </div>
