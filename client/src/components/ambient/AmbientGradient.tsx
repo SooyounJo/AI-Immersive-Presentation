@@ -51,6 +51,8 @@ export function AmbientGradient({ state, modulation = 0, debug = false }: Props)
     if (!canvas) return;
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
+    const canvasEl = canvas;
+    const ctx2 = ctx;
 
     // Size canvas at half-resolution for cheap blur + sharper scaling
     const RES_SCALE = 0.5;
@@ -58,15 +60,15 @@ export function AmbientGradient({ state, modulation = 0, debug = false }: Props)
     let h = 0;
 
     const resize = () => {
-      const rect = canvas.getBoundingClientRect();
+      const rect = canvasEl.getBoundingClientRect();
       w = Math.max(1, Math.floor(rect.width * RES_SCALE));
       h = Math.max(1, Math.floor(rect.height * RES_SCALE));
-      canvas.width = w;
-      canvas.height = h;
+      canvasEl.width = w;
+      canvasEl.height = h;
     };
     resize();
     const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
+    ro.observe(canvasEl);
 
     // Current (interpolated) visual values.
     const cur: GradientVisual = { ...STATE_MAP[stateRef.current] };
@@ -120,15 +122,15 @@ export function AmbientGradient({ state, modulation = 0, debug = false }: Props)
 
       // Apply softness via CSS filter
       const blurPx = Math.max(8, cur.softness * RES_SCALE);
-      canvas.style.filter = `blur(${blurPx}px)`;
+      canvasEl.style.filter = `blur(${blurPx}px)`;
 
       // Clear + paint base
       const baseLightness = Math.floor(cur.base * 100);
-      ctx.fillStyle = `hsl(0, 0%, ${baseLightness}%)`;
-      ctx.fillRect(0, 0, w, h);
+      ctx2.fillStyle = `hsl(0, 0%, ${baseLightness}%)`;
+      ctx2.fillRect(0, 0, w, h);
 
       // Render each light
-      ctx.globalCompositeOperation = 'source-over';
+      ctx2.globalCompositeOperation = 'source-over';
       const diag = Math.hypot(w, h);
 
       for (let i = 0; i < LIGHTS.length; i++) {
@@ -173,21 +175,21 @@ export function AmbientGradient({ state, modulation = 0, debug = false }: Props)
         // Alpha scales with contrast
         const alpha = 0.22 * contrastAmt;
 
-        const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        const grad = ctx2.createRadialGradient(x, y, 0, x, y, radius);
         grad.addColorStop(0.0, `hsla(${hue}, ${sat}%, ${lightness}%, ${alpha})`);
         grad.addColorStop(0.45, `hsla(${hue}, ${sat}%, ${lightness}%, ${alpha * 0.45})`);
         grad.addColorStop(1.0, `hsla(${hue}, ${sat}%, ${lightness}%, 0)`);
 
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h);
+        ctx2.fillStyle = grad;
+        ctx2.fillRect(0, 0, w, h);
       }
 
       // Central calming mask — keep content area quiet
-      const centerMask = ctx.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, diag * 0.28);
+      const centerMask = ctx2.createRadialGradient(w * 0.5, h * 0.5, 0, w * 0.5, h * 0.5, diag * 0.28);
       centerMask.addColorStop(0, `hsla(0, 0%, ${baseLightness}%, 0.18)`);
       centerMask.addColorStop(1, 'hsla(0, 0%, 100%, 0)');
-      ctx.fillStyle = centerMask;
-      ctx.fillRect(0, 0, w, h);
+      ctx2.fillStyle = centerMask;
+      ctx2.fillRect(0, 0, w, h);
 
       rafId = requestAnimationFrame(loop);
     }

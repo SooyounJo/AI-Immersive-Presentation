@@ -2,12 +2,21 @@ import { create } from 'zustand';
 import type { Presentation, Slide, SlideMedia, SlideLink, SlideFile, ChatMessage, AgentMode } from '../types';
 
 export type AppMode = 'present' | 'design';
+export type UiThemeMode = 'morning' | 'night';
+
 const APP_MODE_KEY = 'presentation-agent:appMode';
+const UI_THEME_KEY = 'voix:designTheme';
 
 function readInitialAppMode(): AppMode {
   if (typeof window === 'undefined') return 'design';
   const saved = window.localStorage.getItem(APP_MODE_KEY);
   return saved === 'present' || saved === 'design' ? saved : 'design';
+}
+
+function readUiThemeMode(): UiThemeMode {
+  if (typeof window === 'undefined') return 'night';
+  const saved = window.localStorage.getItem(UI_THEME_KEY);
+  return saved === 'morning' || saved === 'night' ? saved : 'night';
 }
 
 export interface InterruptContext {
@@ -21,6 +30,9 @@ interface PresentationState {
   currentSlideIndex: number;
   agentMode: AgentMode;
   appMode: AppMode;
+  /** Shared with DesignView — presentation chrome follows the same light/dark mood. */
+  uiThemeMode: UiThemeMode;
+  setUiThemeMode: (mode: UiThemeMode) => void;
   chatMessages: ChatMessage[];
   isLoading: boolean;
   streamingText: string;
@@ -64,6 +76,7 @@ interface PresentationState {
   addSlide: (partial?: Partial<Slide>) => void;
   deleteSlide: (index: number) => void;
   moveSlide: (from: number, to: number) => void;
+  setSlides: (slides: Slide[]) => void;
 
   // Slide-level media / link / comment helpers
   addSlideMedia: (index: number, media: SlideMedia) => void;
@@ -82,6 +95,11 @@ export const usePresentationStore = create<PresentationState>((set, get) => ({
   currentSlideIndex: 0,
   agentMode: 'idle',
   appMode: readInitialAppMode(),
+  uiThemeMode: readUiThemeMode(),
+  setUiThemeMode: (mode) => {
+    if (typeof window !== 'undefined') window.localStorage.setItem(UI_THEME_KEY, mode);
+    set({ uiThemeMode: mode });
+  },
   chatMessages: [],
   isLoading: false,
   streamingText: '',
@@ -149,7 +167,13 @@ export const usePresentationStore = create<PresentationState>((set, get) => ({
       allowQA: true,
       ...partial,
     };
-    return { presentation: { ...s.presentation, slides: [...s.presentation.slides, newSlide] } };
+    const slides = [...s.presentation.slides, newSlide];
+    return {
+      presentation: { ...s.presentation, slides },
+      currentSlideIndex: slides.length - 1,
+      chatMessages: [],
+      streamingText: '',
+    };
   }),
   deleteSlide: (index) => set((s) => {
     if (!s.presentation || s.presentation.slides.length <= 1) return s;
@@ -165,6 +189,9 @@ export const usePresentationStore = create<PresentationState>((set, get) => ({
     slides.splice(to, 0, moved);
     return { presentation: { ...s.presentation, slides } };
   }),
+  setSlides: (slides) => set((s) => s.presentation
+    ? { presentation: { ...s.presentation, slides } }
+    : s),
 
   addSlideMedia: (index, media) => set((s) => {
     if (!s.presentation) return s;

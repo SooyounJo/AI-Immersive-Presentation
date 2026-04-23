@@ -1,45 +1,86 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { usePresentationStore } from './stores/presentationStore';
 import { useProjectsStore } from './stores/projectsStore';
+import { usePlayback } from './hooks/usePlayback';
+import { useVoice } from './hooks/useVoice';
 import { SlideView } from './components/SlideView';
 import { TranscriptPanel } from './components/TranscriptPanel';
 import { VoiceControl } from './components/VoiceControl';
 import { ControlBar } from './components/ControlBar';
 import { DesignView } from './components/DesignView';
-import { RaiseHandFab } from './components/RaiseHandFab';
-import { TopPlayButton } from './components/TopPlayButton';
-import { TopToggles } from './components/TopToggles';
 import { ProjectPicker } from './components/ProjectPicker';
 import { AmbientGradient } from './components/ambient/AmbientGradient';
 import { mapAgentMode } from './components/ambient/states';
 import { useAutoSave } from './hooks/useAutoSave';
 import { projectApi } from './api';
+import type { AppMode } from './stores/presentationStore';
 
 export default function App() {
-  const { currentProjectId, init, leave, projects } = useProjectsStore();
+  const { currentProjectId, init, leave } = useProjectsStore();
 
   useEffect(() => { init(); }, [init]);
 
   if (!currentProjectId) return <ProjectPicker />;
 
-  const currentProject = projects.find((p) => p.id === currentProjectId);
-  return <ProjectApp projectName={currentProject?.name} onLeave={leave} />;
+  return <ProjectApp onLeave={leave} />;
 }
 
 /** The actual presentation app — mounted only when a project is selected. */
-function ProjectApp({ projectName, onLeave }: { projectName?: string; onLeave: () => void }) {
-  const { setPresentation, appMode, agentMode, dialogueOpen, isPlaying } = usePresentationStore();
+function shellThemeStyle(uiThemeMode: 'morning' | 'night'): CSSProperties {
+  if (uiThemeMode === 'morning') {
+    return {
+      background: '#ffffff',
+      color: '#111111',
+      ['--gen-bg' as string]: '#ffffff',
+      ['--gen-bg-soft' as string]: '#fafafa',
+      ['--gen-white' as string]: '#ffffff',
+      ['--gen-text' as string]: '#111111',
+      ['--gen-text-sub' as string]: '#666666',
+      ['--gen-text-mute' as string]: '#999999',
+      ['--gen-border' as string]: '#e5e5e5',
+      ['--gen-black' as string]: '#0a0a0a',
+      ['--gen-bg-gray' as string]: '#f5f5f5',
+      ['--gen-charcoal' as string]: '#1a1a1a',
+      ['--gen-border-strong' as string]: '#111111',
+      ['--gen-accent' as string]: '#111111',
+      ['--gen-chip-hover-bg' as string]: '#0a0a0a',
+      ['--gen-chip-hover-fg' as string]: '#ffffff',
+    };
+  }
+  return {
+    background: 'linear-gradient(180deg, #07080b 0%, #090a0d 100%)',
+    color: '#f5f7ff',
+    ['--gen-bg' as string]: '#07080b',
+    ['--gen-bg-soft' as string]: 'rgba(16,17,20,0.82)',
+    ['--gen-white' as string]: 'rgba(22,24,30,0.94)',
+    ['--gen-text' as string]: '#f5f7ff',
+    ['--gen-text-sub' as string]: '#c1c3c9',
+    ['--gen-text-mute' as string]: '#8a8d95',
+    ['--gen-border' as string]: 'rgba(255,255,255,0.14)',
+    ['--gen-black' as string]: '#0d111a',
+    ['--gen-bg-gray' as string]: 'rgba(35,36,42,0.58)',
+    ['--gen-charcoal' as string]: '#1a1f2a',
+    ['--gen-border-strong' as string]: 'rgba(255,255,255,0.22)',
+    ['--gen-accent' as string]: '#7db4ff',
+    ['--gen-chip-hover-bg' as string]: '#e8ecf8',
+    ['--gen-chip-hover-fg' as string]: '#0b0e14',
+  };
+}
+
+function ProjectApp({ onLeave }: { onLeave: () => void }) {
+  const { setPresentation, appMode, dialogueOpen, isPlaying, uiThemeMode, presentation, currentSlideIndex } = usePresentationStore();
   const introAmbienceCtxRef = useRef<AudioContext | null>(null);
   const introAmbienceNodesRef = useRef<{ gains: GainNode[]; oscillators: OscillatorNode[] } | null>(null);
+  const { speak, stopSpeaking, isPlaying: isVoicePlaying } = useVoice();
 
   useAutoSave();
 
-  const activeState = useMemo(() => mapAgentMode(agentMode), [agentMode]);
+  const activeState = useMemo(() => mapAgentMode(usePresentationStore.getState().agentMode), [usePresentationStore.getState().agentMode]);
   const modulation = useMemo(() => {
     if (appMode !== 'present') return 0.18;
-    if (agentMode === 'idle') return 0.38;
+    if (usePresentationStore.getState().agentMode === 'idle') return 0.38;
     return 0.65;
-  }, [appMode, agentMode]);
+  }, [appMode, usePresentationStore.getState().agentMode]);
 
   // Load the current project's presentation when we enter
   useEffect(() => {
@@ -131,31 +172,79 @@ function ProjectApp({ projectName, onLeave }: { projectName?: string; onLeave: (
     introAmbienceNodesRef.current = null;
   }, []);
 
-  // Auto-hide top nav during playback — show on mouse movement
-  const topVisible = useTopNavVisibility(isPlaying);
+  // Presentation chrome is controlled directly by the hamburger toggle.
+  const { visible: chromeVisible, toggle: toggleChrome } = usePresentationChromeVisibility(appMode);
+  usePresentationNavigationControls(appMode, stopSpeaking);
+
+  const currentSlide = presentation?.slides[currentSlideIndex];
+  const currentSlideVoiceText = getSlideVoiceText(currentSlide?.speakerNotes);
+
+  const replaySlideVoice = async () => {
+    if (!currentSlideVoiceText) return;
+    const store = usePresentationStore.getState();
+    if (store.isPlaying) {
+      store.cancelPlayback();
+      store.setAgentMode('idle');
+    }
+    stopSpeaking();
+    await speak(currentSlideVoiceText);
+  };
+
+  useEffect(() => {
+    if (appMode !== 'present' || isPlaying || !currentSlideVoiceText) return;
+    stopSpeaking();
+    void speak(currentSlideVoiceText);
+    return () => {
+      stopSpeaking();
+    };
+  }, [appMode, currentSlideIndex, isPlaying, currentSlideVoiceText, speak, stopSpeaking]);
+
+  const rootChromeStyle = useMemo(() => shellThemeStyle(uiThemeMode), [uiThemeMode]);
 
   return (
     <div
       className="h-screen w-screen flex flex-col overflow-hidden relative"
-      style={{ background: 'var(--gen-bg)', color: 'var(--gen-text)' }}
+      style={rootChromeStyle}
     >
       <AmbientGradient state={activeState} modulation={modulation} />
 
       <div className="flex flex-col flex-1 relative" style={{ zIndex: 1 }}>
-        {/* Top bar — auto-hides during playback */}
-        <TopBar
-          visible={topVisible}
-          projectName={projectName}
-          showToggles={appMode === 'present'}
-          onLeave={onLeave}
-        />
+        <div
+          style={{
+            height: appMode === 'present' ? (chromeVisible ? 58 : 0) : 58,
+            overflow: 'hidden',
+            flexShrink: 0,
+            transition: 'height 400ms var(--gen-ease), opacity 400ms var(--gen-ease)',
+          }}
+        >
+          <TopBar
+            visible={appMode === 'present' ? chromeVisible : true}
+            projectName={presentation?.title}
+            appMode={appMode}
+            onLeave={onLeave}
+          />
+        </div>
 
         {appMode === 'present' ? (
           <>
             <div className="flex-1 relative min-h-0">
-              <SlideView />
+              <SlideView
+                onToggleChrome={toggleChrome}
+                onReplayVoice={replaySlideVoice}
+                hasReplayVoice={Boolean(currentSlideVoiceText)}
+                isReplayVoicePlaying={isVoicePlaying}
+              />
             </div>
-            <ControlBar />
+            <div
+              style={{
+                height: chromeVisible ? 64 : 0,
+                overflow: 'hidden',
+                flexShrink: 0,
+                transition: 'height 400ms var(--gen-ease), opacity 400ms var(--gen-ease)',
+              }}
+            >
+              <ControlBar />
+            </div>
           </>
         ) : (
           <div className="flex-1 min-h-0">
@@ -166,110 +255,130 @@ function ProjectApp({ projectName, onLeave }: { projectName?: string; onLeave: (
       </div>
 
       {appMode === 'present' && <DialogueDrawer open={dialogueOpen} />}
-      <RaiseHandFab />
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────── */
 
-/**
- * Controls the visibility of the top bar.
- * Rules:
- *   - Always visible when not playing
- *   - When playing: hidden after 2s of mouse inactivity
- *   - Mouse movement near top (or anywhere) reveals it for another 2s
- */
-function useTopNavVisibility(isPlaying: boolean) {
+function usePresentationChromeVisibility(appMode: AppMode) {
   const [visible, setVisible] = useState(true);
-  const timerRef = useRef<number | null>(null);
+  const toggle = () => setVisible((prev) => !prev);
 
   useEffect(() => {
-    if (!isPlaying) {
+    if (appMode !== 'present') {
       setVisible(true);
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-      return;
     }
+  }, [appMode]);
 
-    const HIDE_DELAY = 2400;
-    const scheduleHide = () => {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(() => setVisible(false), HIDE_DELAY);
+  return { visible, toggle };
+}
+
+function usePresentationNavigationControls(appMode: AppMode, stopSpeaking: () => void) {
+  const wheelLockRef = useRef(false);
+
+  useEffect(() => {
+    if (appMode !== 'present') return;
+
+    const shouldIgnoreTarget = (eventTarget: EventTarget | null) => {
+      if (!(eventTarget instanceof HTMLElement)) return false;
+      const tag = eventTarget.tagName;
+      return tag === 'INPUT'
+        || tag === 'TEXTAREA'
+        || tag === 'SELECT'
+        || eventTarget.isContentEditable;
     };
 
-    const onMove = (e: MouseEvent) => {
-      // Reveal immediately on motion
-      setVisible(true);
-      // Keep visible a bit longer if cursor is near the top edge (<120px)
-      if (e.clientY < 120) {
-        if (timerRef.current) window.clearTimeout(timerRef.current);
-      } else {
-        scheduleHide();
+    const navigate = (direction: 'next' | 'prev') => {
+      const store = usePresentationStore.getState();
+      if (store.isPlaying) {
+        store.cancelPlayback();
+        store.setAgentMode('idle');
+      }
+      stopSpeaking();
+      if (direction === 'next') store.nextSlide();
+      else store.prevSlide();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (shouldIgnoreTarget(event.target)) return;
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        navigate('next');
+      } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        navigate('prev');
       }
     };
 
-    scheduleHide();
-    window.addEventListener('mousemove', onMove);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-    };
-  }, [isPlaying]);
+    const onWheel = (event: WheelEvent) => {
+      if (shouldIgnoreTarget(event.target)) return;
+      if (Math.abs(event.deltaY) < 24) return;
+      if (wheelLockRef.current) {
+        event.preventDefault();
+        return;
+      }
 
-  return visible;
+      wheelLockRef.current = true;
+      window.setTimeout(() => {
+        wheelLockRef.current = false;
+      }, 420);
+
+      event.preventDefault();
+      navigate(event.deltaY > 0 ? 'next' : 'prev');
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('wheel', onWheel);
+    };
+  }, [appMode, stopSpeaking]);
+}
+
+function getSlideVoiceText(speakerNotes?: string) {
+  const text = (speakerNotes || '').trim();
+  if (!text) return '';
+  if (text === '이 슬라이드에서 발표자가 말할 내용을 입력하세요.') return '';
+  return text;
 }
 
 function TopBar({
-  visible, projectName, showToggles, onLeave,
+  visible, projectName, appMode, onLeave,
 }: {
   visible: boolean;
   projectName?: string;
-  showToggles: boolean;
+  appMode: AppMode;
   onLeave: () => void;
 }) {
-  const projectTitleOffset = showToggles ? 14 : 132;
+  const { play, pause } = usePlayback();
+  const { setAppMode } = usePresentationStore();
+
+  const handleViewClick = () => {
+    if (appMode === 'design') {
+      void play();
+    } else {
+      setAppMode('design');
+      pause();
+    }
+  };
+
   return (
     <div
-      className="flex items-center justify-between px-6 py-2"
+      className="flex items-center justify-between px-6 py-3"
       style={{
         borderBottom: 'none',
         background: 'rgba(6, 8, 12, 0.98)',
         backdropFilter: 'blur(4px)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.45), inset 0 -1px 0 rgba(108,126,166,0.26)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
         transform: visible ? 'translateY(0)' : 'translateY(-110%)',
         opacity: visible ? 1 : 0,
         transition: 'transform 400ms var(--gen-ease), opacity 400ms var(--gen-ease)',
         pointerEvents: visible ? 'auto' : 'none',
       }}
     >
-      {/* VOIX brand — also doubles as "back to projects" */}
-      <button
-        onClick={onLeave}
-        title="Back to projects"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer',
-          color: 'var(--gen-text)',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            border: '1px solid var(--gen-border)',
-            padding: '4px 8px',
-            color: '#d6ddf0',
-            background: '#0d111a',
-          }}
-        >
-          Home
-        </span>
+      <div className="flex items-center gap-6">
         <span
           style={{
             fontSize: 20,
@@ -277,51 +386,69 @@ function TopBar({
             letterSpacing: '0.28em',
             textTransform: 'uppercase',
             color: '#f5f7ff',
+            cursor: 'pointer',
           }}
+          onClick={onLeave}
         >
           VOIX
         </span>
-        <span
-          className="truncate"
+        <div
           style={{
-            maxWidth: 300,
-            marginLeft: projectTitleOffset,
-            fontSize: 13,
-            color: '#d6ddf0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0,
+            color: 'rgba(255,255,255,0.4)',
+            fontSize: 11,
             fontWeight: 400,
-            textAlign: 'left',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
           }}
         >
-          {projectName || 'Untitled'}
-        </span>
-      </button>
+          <span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>{projectName || 'MY FIRST PROJECT'}</span>
+        </div>
+      </div>
 
-      <div className="flex items-center gap-3">
-        {showToggles && <TopToggles />}
+      <div className="flex items-center gap-2">
         <button
-          title="Export presentation"
+          onClick={handleViewClick}
           style={{
-            padding: '9px 16px',
+            padding: '8px 24px',
             fontSize: 10,
             fontWeight: 500,
-            letterSpacing: '0.18em',
+            letterSpacing: '0.1em',
             textTransform: 'uppercase',
-            background: '#1c2433',
-            color: '#f5f7ff',
-            border: '1px solid #38445d',
+            background: appMode === 'present' ? '#ffffff' : 'transparent',
+            color: appMode === 'present' ? '#000000' : '#ffffff',
+            border: '1px solid rgba(255,255,255,0.3)',
             cursor: 'pointer',
-            transition: 'all var(--gen-fast)',
           }}
         >
-          Export
+          {appMode === 'present' ? 'Exit' : 'View'}
         </button>
-        <TopPlayButton />
+        <button
+          onClick={() => {}} // Dummy Share for now
+          style={{
+            padding: '8px 24px',
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            background: 'transparent',
+            color: '#ffffff',
+            border: '1px solid rgba(255,255,255,0.3)',
+            cursor: 'pointer',
+          }}
+        >
+          Share
+        </button>
       </div>
     </div>
   );
 }
 
 function DialogueDrawer({ open }: { open: boolean }) {
+  const uiThemeMode = usePresentationStore((s) => s.uiThemeMode);
+  const isNight = uiThemeMode === 'night';
   return (
     <div
       aria-hidden={!open}
@@ -333,13 +460,14 @@ function DialogueDrawer({ open }: { open: boolean }) {
         width: 384,
         display: 'flex',
         flexDirection: 'column',
-        background: 'rgba(250,250,250,0.92)',
+        background: isNight ? 'rgba(12,14,20,0.96)' : 'rgba(250,250,250,0.92)',
         backdropFilter: 'blur(10px)',
         borderLeft: '1px solid var(--gen-border)',
+        color: 'var(--gen-text)',
         transform: open ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 500ms cubic-bezier(0.16, 1, 0.3, 1)',
         zIndex: 30,
-        boxShadow: open ? '0 0 60px rgba(0,0,0,0.08)' : 'none',
+        boxShadow: open ? (isNight ? '0 0 60px rgba(0,0,0,0.5)' : '0 0 60px rgba(0,0,0,0.08)') : 'none',
       }}
     >
       <TranscriptPanel />

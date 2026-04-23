@@ -8,16 +8,13 @@ import { IconPlay, IconPause } from './icons';
  * so the three form a harmonious cluster.
  */
 export function TopPlayButton() {
-  const { isPlaying, appMode, setAppMode } = usePresentationStore();
+  const { isPlaying } = usePresentationStore();
   const { toggle } = usePlayback();
 
   const handleClick = () => {
-    // In design mode, Start should first open present view
-    // so users can page through their authored slides.
-    if (appMode !== 'present') {
-      setAppMode('present');
-      return;
-    }
+    // Always delegate to playback hook.
+    // The hook itself switches to present mode when needed,
+    // and immediately starts playback in the same click.
     toggle();
   };
 
@@ -32,7 +29,7 @@ export function TopPlayButton() {
         letterSpacing: '0.18em',
         textTransform: 'uppercase',
         background: 'var(--gen-black)',
-        color: 'var(--gen-white)',
+        color: '#f5f7ff',
         border: '1px solid var(--gen-black)',
         cursor: 'pointer',
         transition: 'all var(--gen-fast)',

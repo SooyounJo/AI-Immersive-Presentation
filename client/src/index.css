@@ -16,6 +16,8 @@
   --gen-text-sub: #666666;
   --gen-text-mute: #999999;
   --gen-accent: #111111;
+  --gen-chip-hover-bg: var(--gen-black);
+  --gen-chip-hover-fg: var(--gen-white);
 
   --gen-ease: cubic-bezier(0.4, 0, 0.2, 1);
   --gen-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -128,7 +130,104 @@ button {
   border-color: var(--gen-black);
 }
 .gen-btn-primary:hover:not(:disabled) {
-  background: var(--gen-charcoal);
+  background: #2f2f2f;
+  border-color: #2f2f2f;
+}
+
+/* Compact strip actions (GO, etc.): brighten slightly on hover */
+.gen-go-btn {
+  transition: filter var(--gen-fast);
+}
+.gen-go-btn:hover:not(:disabled) {
+  filter: brightness(1.14);
+}
+.gen-go-btn:active:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+.gen-subtle-hover {
+  transition: filter var(--gen-fast);
+}
+.gen-subtle-hover:hover {
+  filter: brightness(1.1);
+}
+
+.gen-bundled-asset-tile {
+  transition: filter var(--gen-fast), border-color var(--gen-fast);
+}
+.gen-bundled-asset-tile:hover {
+  filter: brightness(1.1);
+  border-color: rgba(95, 157, 255, 0.35);
+}
+.gen-bundled-asset-tile:active {
+  cursor: grabbing;
+}
+.gen-bundled-asset-tile--light:hover {
+  filter: none;
+  border-color: #5f9dff;
+  box-shadow: 0 1px 4px rgba(95, 157, 255, 0.18);
+}
+
+/* Background preset picker: visual swatch + label overlay */
+.gen-bg-preset-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  padding: 0;
+  border: 1px solid var(--gen-border);
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all var(--gen-fast);
+  background: transparent;
+}
+.gen-bg-preset-tile:hover {
+  border-color: rgba(95, 157, 255, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+/* Light panel: avoid filter on hover (washes out labels); use border instead */
+.gen-bg-preset-tile--light:hover {
+  border-color: #5f9dff;
+}
+.gen-bg-preset-tile--selected {
+  border-color: #5f9dff;
+  box-shadow: inset 0 0 0 1px #5f9dff, 0 0 8px rgba(95, 157, 255, 0.25);
+}
+.gen-bg-preset-tile__swatch {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.gen-bg-preset-tile__frame {
+  position: absolute;
+  inset: 7px;
+  border: 1px dashed rgba(30, 41, 59, 0.35);
+  pointer-events: none;
+}
+.gen-bg-preset-tile--light .gen-bg-preset-tile__frame {
+  border-color: rgba(15, 23, 42, 0.28);
+}
+.gen-bg-preset-tile__label {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 8px 6px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  transition: background var(--gen-fast);
+}
+.gen-bg-preset-tile:hover .gen-bg-preset-tile__label {
+  backdrop-filter: blur(6px);
 }
 
 .gen-btn-outline {
@@ -192,6 +291,14 @@ textarea.gen-input {
 .gen-line {
   transform-origin: left center;
   animation: gen-line-expand var(--gen-slow) both;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
 @keyframes gen-motion-vibrate {
@@ -288,10 +395,10 @@ textarea.gen-input {
   top: 0.85em;
   width: 16px;
   height: 1px;
-  background: var(--gen-black);
+  background: var(--gen-border);
 }
 .gen-prose blockquote {
-  border-left: 1px solid var(--gen-black);
+  border-left: 1px solid var(--gen-border);
   padding: 8px 0 8px 32px;
   margin: 2em 0;
   font-weight: 200;
@@ -321,7 +428,7 @@ textarea.gen-input {
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--gen-black);
+  border-bottom: 1px solid var(--gen-border);
   color: var(--gen-text);
 }
 .gen-prose td {
@@ -330,11 +437,11 @@ textarea.gen-input {
   border-bottom: 1px solid var(--gen-border);
 }
 
-/* Background sliders: no stroke/border on knob */
+/* Range sliders: visible track on WebKit (Chrome/Edge); fill via --slider-fill */
 .bg-param-slider {
   -webkit-appearance: none;
   appearance: none;
-  height: 6px;
+  height: 8px;
   border-radius: 999px;
 }
 .bg-param-slider:focus {
@@ -344,7 +451,13 @@ textarea.gen-input {
   height: 6px;
   border: none;
   border-radius: 999px;
-  background: transparent;
+  background: linear-gradient(
+    to right,
+    #5f9dff 0%,
+    #5f9dff var(--slider-fill, 0%),
+    var(--gen-border) var(--slider-fill, 0%),
+    var(--gen-border) 100%
+  );
 }
 .bg-param-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -355,13 +468,13 @@ textarea.gen-input {
   border: none;
   border-radius: 50%;
   background: #5f9dff;
-  box-shadow: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
 .bg-param-slider::-moz-range-track {
   height: 6px;
   border: none;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--gen-border);
 }
 .bg-param-slider::-moz-range-progress {
   height: 6px;

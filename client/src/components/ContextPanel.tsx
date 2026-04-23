@@ -1,18 +1,43 @@
-import { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
+import { useState, useRef, useCallback, type DragEvent, type ChangeEvent, type KeyboardEvent, type MouseEvent, type CSSProperties } from 'react';
 import { useAssets } from '../hooks/useAssets';
 import { usePresentationStore } from '../stores/presentationStore';
 import type { Asset, BackgroundPresetKind } from '../types';
 import {
-  IconImages, IconWeb, IconArrowDown, IconArrowRight, IconPlus, IconClose,
-  IconTrash, IconLink, IconPdf, IconVideo, IconComment,
+  IconImages, IconArrowDown, IconPlus, IconClose,
+  IconChevronRight, IconChevronDown,
+  IconTrash, IconLink, IconPdf, IconVideo,
 } from './icons';
 
 import { API_HOST } from '../api';
+import { PRESET_CARDS } from '../data/slidePresets';
+import { BackgroundPresetTile } from './BackgroundPresetTile';
 
 type MediaTabId = 'preset' | 'visual' | 'asset';
 type UiThemeMode = 'morning' | 'night';
 type TextPanelTab = 'size' | 'fonts' | 'color';
 type BgPaletteItem = { name: string; color: string; params: Record<string, number> };
+
+/** Collapsed accordion row — same dimensions for Background / Gen Text / Text Style */
+const PRESET_FOLD_HEADER_STYLE: CSSProperties = {
+  padding: '8px 12px',
+  minHeight: 44,
+  width: '100%',
+  boxSizing: 'border-box',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+};
+
+const SECTION_CONTAINER_STYLE = (isNight: boolean): CSSProperties => ({
+  border: '1px solid var(--gen-border)',
+  background: isNight ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.65)',
+  backdropFilter: 'blur(8px)',
+  borderRadius: 4,
+  overflow: 'hidden',
+  transition: 'all var(--gen-fast)',
+  width: '100%',
+  boxSizing: 'border-box',
+});
 
 const BACKGROUND_PRESETS: Array<{
   kind: BackgroundPresetKind;
@@ -95,41 +120,40 @@ const BG_PALETTES: Partial<Record<BackgroundPresetKind, BgPaletteItem[]>> = {
 
 const MOTION_PRESETS: Array<{ id: string; label: string }> = [
   { id: 'none', label: 'None' },
-  { id: 'vibrate', label: '진동' },
-  { id: 'bounce', label: '바운스' },
-  { id: 'pulse', label: '펄스' },
-  { id: 'float', label: '플로트' },
-  { id: 'wave', label: '웨이브' },
-  { id: 'swing', label: '스윙' },
-  { id: 'jello', label: '젤로' },
-  { id: 'wobble', label: '워블' },
-  { id: 'shakeX', label: '좌우 흔들림' },
-  { id: 'shakeY', label: '상하 흔들림' },
-  { id: 'flipX', label: '플립 X' },
-  { id: 'flipY', label: '플립 Y' },
-  { id: 'tilt', label: '틸트' },
-  { id: 'zoomInOut', label: '줌 인아웃' },
-  { id: 'breath', label: '호흡' },
-  { id: 'flicker', label: '깜빡임' },
-  { id: 'heartbeat', label: '하트비트' },
-  { id: 'rubberBand', label: '러버밴드' },
-  { id: 'roll', label: '롤' },
+  { id: 'vibrate', label: 'Vibration' },
+  { id: 'bounce', label: 'Bounce' },
+  { id: 'pulse', label: 'Pulse' },
+  { id: 'float', label: 'Float' },
+  { id: 'wave', label: 'Wave' },
+  { id: 'swing', label: 'Swing' },
+  { id: 'jello', label: 'Jello' },
+  { id: 'wobble', label: 'Wobble' },
+  { id: 'shakeX', label: 'Horizontal Shake' },
+  { id: 'shakeY', label: 'Vertical Shake' },
+  { id: 'flipX', label: 'Flip X' },
+  { id: 'flipY', label: 'Flip Y' },
+  { id: 'tilt', label: 'Tilt' },
+  { id: 'zoomInOut', label: 'Zoom In/Out' },
+  { id: 'breath', label: 'Breathing' },
+  { id: 'flicker', label: 'Blinking' },
+  { id: 'heartbeat', label: 'Heartbeat' },
+  { id: 'rubberBand', label: 'Rubber Band' },
+  { id: 'roll', label: 'Roll' },
 ];
 
 export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode }) {
-  const { assets, loading, error, uploadPdf, uploadImages, uploadVideo, addFigma, addUrl, addNote, deleteAsset } = useAssets();
-  const { presentation, currentSlideIndex, updateSlide, addSlideMedia, addSlideLink } = usePresentationStore();
+  const { assets, loading, error, uploadPdf, uploadImages, uploadVideo, addFigma, addUrl } = useAssets();
+  const { presentation, currentSlideIndex, updateSlide, addSlide, addSlideMedia, addSlideLink } = usePresentationStore();
 
   const [isDragging, setIsDragging] = useState(false);
   const [figmaUrl, setFigmaUrl] = useState('');
-  const [webUrl, setWebUrl] = useState('');
   const [presetUrl, setPresetUrl] = useState('');
   const [mediaTab, setMediaTab] = useState<MediaTabId>('preset');
   const [assetSearch, setAssetSearch] = useState('');
   const [textPanelTab, setTextPanelTab] = useState<TextPanelTab>('size');
-  const [videoPrompt, setVideoPrompt] = useState('');
-  const [isBgSectionOpen, setIsBgSectionOpen] = useState(true);
-  const [isTextSectionOpen, setIsTextSectionOpen] = useState(true);
+  const [isBgSectionOpen, setIsBgSectionOpen] = useState(false);
+  const [isTextSectionOpen, setIsTextSectionOpen] = useState(false);
+  const [isTextStyleSectionOpen, setIsTextStyleSectionOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -288,27 +312,55 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
     });
   };
 
-  const applyGenTitle = () => {
-    if (!genTitle.trim()) return;
-    updateSlide(currentSlideIndex, { title: genTitle.trim() });
-    setGenTitle('');
+  const pickSmartPreset = (title: string, content: string, hasImageAsset: boolean) => {
+    const plain = `${title} ${content}`.toLowerCase();
+    if (hasImageAsset || /\b(image|photo|visual|gallery)\b/.test(plain)) {
+      return PRESET_CARDS.find((p) => p.id === 'figma-15') ?? PRESET_CARDS[0];
+    }
+    const bulletCount = (content.match(/##\s/g) ?? []).length + (content.match(/-\s/g) ?? []).length;
+    if (bulletCount >= 4) return PRESET_CARDS.find((p) => p.id === 'figma-8') ?? PRESET_CARDS[0];
+    if (bulletCount >= 2) return PRESET_CARDS.find((p) => p.id === 'figma-7') ?? PRESET_CARDS[0];
+    return PRESET_CARDS.find((p) => p.id === 'figma-3') ?? PRESET_CARDS[0];
   };
 
-  const applyGenLabels = () => {
+  const createSlideFromGenInputs = () => {
+    const title = genTitle.trim();
+    const contents = genContents.trim();
     const labels = genLabels
       .split(',')
       .map((x) => x.trim())
       .filter(Boolean);
-    if (!labels.length) return;
-    updateSlide(currentSlideIndex, { labels });
-    setGenLabels('');
-  };
+    if (!title && !contents && labels.length === 0) return;
 
-  const applyGenContents = () => {
-    if (!genContents.trim()) return;
-    updateSlide(currentSlideIndex, { content: genContents.trim() });
+    const hasImageAsset = assets.some((a) => a.type === 'image');
+    const preset = pickSmartPreset(title, contents, hasImageAsset);
+    const presetBody = (preset.content || '').replace(/^#\s[^\n]+/, '').trim();
+    const mergedBody = contents || presetBody || '';
+    const mergedTitle = title || preset.title;
+    const content = `# ${mergedTitle}${mergedBody ? `\n\n${mergedBody}` : ''}`;
+
+    addSlide({
+      templateId: preset.id,
+      title: mergedTitle,
+      content,
+      speakerNotes: preset.speakerNotes,
+      visualType: preset.visualType,
+      allowQA: true,
+      sceneMode: 'slide',
+      labels: labels.length ? labels : undefined,
+      textStyle: currentSlide?.textStyle,
+      background: currentSlide?.background,
+    });
+    setGenTitle('');
+    setGenLabels('');
     setGenContents('');
   };
+
+  const canApplyGenText = Boolean(
+    genTitle.trim()
+      || genContents.trim()
+      || genLabels.split(',').some((x) => x.trim()),
+  );
 
   const isNight = themeMode === 'night';
   const sizeOptions = [
@@ -337,7 +389,30 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
     'brand-symbol-h.svg',
   ].filter((name) => name.toLowerCase().includes(assetSearch.trim().toLowerCase()));
 
-  const applyTextStylePatch = (patch: { sizeScale?: number; fontFamily?: string; fontWeight?: 300 | 500 | 700; color?: string }) => {
+  const bundledAssetPublicUrl = useCallback((name: string) => {
+    const path = `/bundled/${encodeURIComponent(name)}`;
+    return new URL(path, window.location.origin).href;
+  }, []);
+
+  const attachBundledAssetToSlide = useCallback((name: string) => {
+    if (!presentation?.slides?.length) return;
+    const url = bundledAssetPublicUrl(name);
+    addSlideMedia(currentSlideIndex, {
+      url,
+      kind: 'image',
+      name,
+    });
+  }, [addSlideMedia, bundledAssetPublicUrl, currentSlideIndex, presentation?.slides?.length]);
+
+  const applyTextStylePatch = (patch: {
+    sizeScale?: number;
+    fontFamily?: string;
+    fontWeight?: 300 | 500 | 700;
+    color?: string;
+    motionPreset?: string;
+    motionIntensity?: number;
+    motionSpeed?: number;
+  }) => {
     if (!currentSlide) return;
     updateSlide(currentSlideIndex, {
       textStyle: {
@@ -374,15 +449,15 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
         ['--gen-bg-gray' as any]: isNight ? 'rgba(35,36,42,0.58)' : '#e9e9e9',
         ['--gen-btn-active-bg' as any]: isNight ? '#2c2e34' : '#d9dde6',
         ['--gen-btn-active-text' as any]: isNight ? '#f5f7ff' : '#151b26',
-        ['--gen-btn-muted-bg' as any]: isNight ? '#202227' : '#f5f6f8',
-        ['--gen-btn-muted-text' as any]: isNight ? '#f5f7ff' : '#2f3542',
-        ['--gen-btn-solid-bg' as any]: isNight ? '#27292f' : '#d7dce8',
-        ['--gen-btn-solid-text' as any]: isNight ? '#f5f7ff' : '#1f2633',
+        ['--gen-btn-muted-bg' as any]: isNight ? '#202227' : '#ebeff5',
+        ['--gen-btn-muted-text' as any]: isNight ? '#f5f7ff' : '#1a1f2e',
+        ['--gen-btn-solid-bg' as any]: isNight ? '#27292f' : '#c5cedd',
+        ['--gen-btn-solid-text' as any]: isNight ? '#f5f7ff' : '#121826',
       }}
     >
             <div className="flex gap-0" style={{ border: '1px solid var(--gen-border)' }}>
               <MiniTabBtn label="Preset" active={mediaTab === 'preset'} onClick={() => setMediaTab('preset')} />
-              <MiniTabBtn label="Visual" active={mediaTab === 'visual'} onClick={() => setMediaTab('visual')} />
+              <MiniTabBtn label="Motion & Img" active={mediaTab === 'visual'} onClick={() => setMediaTab('visual')} />
               <MiniTabBtn label="Asset" active={mediaTab === 'asset'} onClick={() => setMediaTab('asset')} />
             </div>
 
@@ -425,85 +500,61 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
             </div>
 
             <LabeledInput
-              label={<><IconWeb size={12} /> Source URL</>}
+              label="URL"
               value={presetUrl}
               onChange={setPresetUrl}
               placeholder="figma.com/... or https://..."
               disabled={loading}
               onSubmit={submitPresetUrl}
             />
-            <div style={{ border: '1px solid var(--gen-border)', background: 'var(--gen-white)', padding: 10 }}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="gen-label">Background Selection</div>
+            <div style={SECTION_CONTAINER_STYLE(isNight)}>
+              <div style={PRESET_FOLD_HEADER_STYLE}>
+                <div className="gen-label" style={{ marginBottom: 0, opacity: 0.8 }}>Background</div>
                 <button
+                  type="button"
                   onClick={() => setIsBgSectionOpen((v) => !v)}
                   style={{ border: 'none', background: 'transparent', color: 'var(--gen-text-sub)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
                   title={isBgSectionOpen ? 'Collapse' : 'Expand'}
                 >
-                  {isBgSectionOpen ? <IconArrowDown size={12} /> : <IconArrowRight size={12} />}
+                  {isBgSectionOpen ? <IconChevronDown size={12} /> : <IconChevronRight size={12} />}
                 </button>
               </div>
               {isBgSectionOpen && (
-              <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+              <div style={{ borderTop: '1px solid var(--gen-border)' }}>
+              <div style={{ padding: 10, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
                 {BACKGROUND_PRESETS.map((bg) => (
-                  <button
+                  <BackgroundPresetTile
                     key={bg.kind}
+                    kind={bg.kind}
+                    label={bg.label}
+                    lightUi={!isNight}
+                    selected={currentSlide?.background?.kind === bg.kind}
                     onClick={() => applyBackgroundPreset(bg.kind)}
-                    style={{
-                      height: 26,
-                      border: '1px solid var(--gen-border)',
-                      background: currentSlide?.background?.kind === bg.kind ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)',
-                      color: currentSlide?.background?.kind === bg.kind ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)',
-                      fontSize: 10,
-                      cursor: 'pointer',
-                    }}
-                    title={bg.kind}
-                  >
-                    {bg.label}
-                  </button>
+                  />
                 ))}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, marginTop: 6 }}>
-                <button
+                <BackgroundPresetTile
+                  kind="solidBlack"
+                  label="Black (Default)"
+                  lightUi={!isNight}
+                  selected={currentSlide?.background?.kind === 'solidBlack'}
                   onClick={() => applySolidBackground('black')}
-                  style={{
-                    height: 26,
-                    border: '1px solid var(--gen-border)',
-                    background: currentSlide?.background?.kind === 'solidBlack' ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)',
-                    color: currentSlide?.background?.kind === 'solidBlack' ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)',
-                    fontSize: 10,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Black (Default)
-                </button>
-                <button
+                />
+                <BackgroundPresetTile
+                  kind="solidWhite"
+                  label="White (Default)"
+                  lightUi={!isNight}
+                  selected={currentSlide?.background?.kind === 'solidWhite'}
                   onClick={() => applySolidBackground('white')}
-                  style={{
-                    height: 26,
-                    border: '1px solid var(--gen-border)',
-                    background: currentSlide?.background?.kind === 'solidWhite' ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)',
-                    color: currentSlide?.background?.kind === 'solidWhite' ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)',
-                    fontSize: 10,
-                    cursor: 'pointer',
-                  }}
-                >
-                  White (Default)
-                </button>
-                <button
+                />
+                <BackgroundPresetTile
+                  kind="customImage"
+                  label="My Image"
+                  lightUi={!isNight}
+                  selected={currentSlide?.background?.kind === 'customImage'}
                   onClick={applyMyImageBackground}
-                  style={{
-                    height: 26,
-                    border: '1px solid var(--gen-border)',
-                    background: currentSlide?.background?.kind === 'customImage' ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)',
-                    color: currentSlide?.background?.kind === 'customImage' ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)',
-                    fontSize: 10,
-                    cursor: 'pointer',
-                  }}
-                >
-                  My Image
-                </button>
+                />
               </div>
               {currentPreset && (
                 <div style={{ marginTop: 8, borderTop: '1px solid var(--gen-border)', paddingTop: 8, display: 'grid', gap: 6 }}>
@@ -551,7 +602,7 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                             style={{
                               width: '100%',
                               accentColor: '#5f9dff',
-                              background: `linear-gradient(to right, #5f9dff 0%, #5f9dff ${percent}%, rgba(255,255,255,0.28) ${percent}%, rgba(255,255,255,0.28) 100%)`,
+                              ['--slider-fill' as string]: `${percent}%`,
                             }}
                           />
                         </div>
@@ -560,81 +611,109 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                   </div>
                 </div>
               )}
-              </>
+              </div>
               )}
             </div>
-            <div style={{ border: '1px solid var(--gen-border)', background: 'var(--gen-white)' }}>
-              <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--gen-border)', fontSize: 13, color: 'var(--gen-text-sub)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Gen Text</span>
+            <div style={SECTION_CONTAINER_STYLE(isNight)}>
+              <div style={PRESET_FOLD_HEADER_STYLE}>
+                <div className="gen-label" style={{ marginBottom: 0, opacity: 0.8 }}>Gen Text</div>
                 <button
+                  type="button"
                   onClick={() => setIsTextSectionOpen((v) => !v)}
                   style={{ border: 'none', background: 'transparent', color: 'var(--gen-text-sub)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
                   title={isTextSectionOpen ? 'Collapse' : 'Expand'}
                 >
-                  {isTextSectionOpen ? <IconArrowDown size={12} /> : <IconArrowRight size={12} />}
+                  {isTextSectionOpen ? <IconChevronDown size={12} /> : <IconChevronRight size={12} />}
                 </button>
               </div>
               {isTextSectionOpen && (
-              <>
-              <div style={{ padding: 8, display: 'grid', gap: 6 }}>
-                <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
-                  <input
-                    value={genTitle}
-                    onChange={(e) => setGenTitle(e.target.value)}
-                    placeholder="Title"
-                    style={{ flex: 1, border: 'none', padding: '8px 10px', fontSize: 12, outline: 'none' }}
-                  />
+                <div style={{ padding: 8, display: 'grid', gap: 6, borderTop: '1px solid var(--gen-border)' }}>
+                  <div style={{ border: '1px solid var(--gen-border)' }}>
+                    <input
+                      value={genTitle}
+                      onChange={(e) => setGenTitle(e.target.value)}
+                      placeholder="Title"
+                      style={{ width: '100%', border: 'none', padding: '8px 10px', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ border: '1px solid var(--gen-border)' }}>
+                    <input
+                      value={genLabels}
+                      onChange={(e) => setGenLabels(e.target.value)}
+                      placeholder="Labels (comma-separated)"
+                      style={{ width: '100%', border: 'none', padding: '8px 10px', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ border: '1px solid var(--gen-border)' }}>
+                    <input
+                      value={genContents}
+                      onChange={(e) => setGenContents(e.target.value)}
+                      placeholder="Contents"
+                      style={{ width: '100%', border: 'none', padding: '8px 10px', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
                   <button
-                    onClick={applyGenTitle}
-                    style={{ width: 50, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}
+                    type="button"
+                    onClick={createSlideFromGenInputs}
+                    disabled={!canApplyGenText}
+                    className="gen-go-btn"
+                    style={{
+                      height: 32,
+                      border: 'none',
+                      background: 'var(--gen-btn-solid-bg)',
+                      color: 'var(--gen-btn-solid-text)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.06em',
+                      cursor: canApplyGenText ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: canApplyGenText ? 1 : 0.35,
+                    }}
+                    aria-label="Create slide from Gen Text"
                   >
-                    ADD
+                    GO
                   </button>
                 </div>
-                <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
-                  <input
-                    value={genLabels}
-                    onChange={(e) => setGenLabels(e.target.value)}
-                    placeholder="Labels"
-                    style={{ flex: 1, border: 'none', padding: '8px 10px', fontSize: 12, outline: 'none' }}
-                  />
-                  <button
-                    onClick={applyGenLabels}
-                    style={{ width: 50, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}
-                  >
-                    ADD
-                  </button>
-                </div>
-                <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
-                  <input
-                    value={genContents}
-                    onChange={(e) => setGenContents(e.target.value)}
-                    placeholder="Contents"
-                    style={{ flex: 1, border: 'none', padding: '8px 10px', fontSize: 12, outline: 'none' }}
-                  />
-                  <button
-                    onClick={applyGenContents}
-                    style={{ width: 50, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}
-                  >
-                    ADD
-                  </button>
-                </div>
-              </div>
-              <div className="flex" style={{ borderTop: '1px solid var(--gen-border)' }}>
+              )}
+            </div>
+
+            <div style={SECTION_CONTAINER_STYLE(isNight)}>
+              <div style={PRESET_FOLD_HEADER_STYLE}>
+                <div className="gen-label" style={{ marginBottom: 0, opacity: 0.8 }}>Text Style</div>
                 <button
+                  type="button"
+                  onClick={() => setIsTextStyleSectionOpen((v) => !v)}
+                  style={{ border: 'none', background: 'transparent', color: 'var(--gen-text-sub)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
+                  title={isTextStyleSectionOpen ? 'Collapse' : 'Expand'}
+                >
+                  {isTextStyleSectionOpen ? <IconChevronDown size={12} /> : <IconChevronRight size={12} />}
+                </button>
+              </div>
+              {isTextStyleSectionOpen && (
+              <div style={{ borderTop: '1px solid var(--gen-border)' }}>
+              <div className="flex">
+                <button
+                  type="button"
                   onClick={() => setTextPanelTab('size')}
+                  className="gen-subtle-hover"
                   style={{ flex: 1, height: 30, border: 'none', background: textPanelTab === 'size' ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)', color: textPanelTab === 'size' ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)', fontSize: 11, cursor: 'pointer' }}
                 >
                   Size
                 </button>
                 <button
+                  type="button"
                   onClick={() => setTextPanelTab('fonts')}
+                  className="gen-subtle-hover"
                   style={{ flex: 1, height: 30, border: 'none', borderLeft: '1px solid var(--gen-border)', background: textPanelTab === 'fonts' ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)', color: textPanelTab === 'fonts' ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)', fontSize: 11, cursor: 'pointer' }}
                 >
                   Fonts
                 </button>
                 <button
+                  type="button"
                   onClick={() => setTextPanelTab('color')}
+                  className="gen-subtle-hover"
                   style={{ flex: 1, height: 30, border: 'none', borderLeft: '1px solid var(--gen-border)', background: textPanelTab === 'color' ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)', color: textPanelTab === 'color' ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)', fontSize: 11, cursor: 'pointer' }}
                 >
                   Color
@@ -645,8 +724,10 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
                     {sizeOptions.map((opt) => (
                       <button
+                        type="button"
                         key={opt.label}
                         onClick={() => applyTextStylePatch({ sizeScale: opt.scale })}
+                        className="gen-subtle-hover"
                         style={{
                           height: 26,
                           border: (currentSlide?.textStyle?.sizeScale ?? 1) === opt.scale ? '1px solid #5f9dff' : '1px solid var(--gen-border)',
@@ -666,8 +747,10 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
                       {fontWeightOptions.map((weight) => (
                         <button
+                          type="button"
                           key={weight.label}
                           onClick={() => applyTextStylePatch({ fontWeight: weight.value })}
+                          className="gen-subtle-hover"
                           style={{
                             height: 26,
                             border: currentSlide?.textStyle?.fontWeight === weight.value ? '1px solid #5f9dff' : '1px solid var(--gen-border)',
@@ -684,8 +767,10 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                     </div>
                     {fontOptions.map((font) => (
                       <button
+                        type="button"
                         key={font}
                         onClick={() => applyTextStylePatch({ fontFamily: font })}
+                        className="gen-subtle-hover"
                         style={{
                           height: 28,
                           border: currentSlide?.textStyle?.fontFamily === font ? '1px solid #5f9dff' : '1px solid var(--gen-border)',
@@ -708,9 +793,11 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8 }}>
                     {hyundaiPalette.map((hex) => (
                       <button
+                        type="button"
                         key={hex}
                         onClick={() => applyTextStylePatch({ color: hex })}
                         title={hex}
+                        className="gen-subtle-hover"
                         style={{
                           height: 24,
                           border: currentSlide?.textStyle?.color === hex ? '2px solid #5f9dff' : '1px solid var(--gen-border)',
@@ -722,7 +809,7 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                   </div>
                 )}
               </div>
-              </>
+              </div>
               )}
             </div>
             </>
@@ -778,30 +865,6 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                 </div>
 
                 <div>
-                  <div className="gen-label mb-2">Prompt</div>
-                  <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
-                    <textarea
-                      rows={2}
-                      value={videoPrompt}
-                      onChange={(e) => setVideoPrompt(e.target.value)}
-                      placeholder="Prompt"
-                      style={{
-                        flex: 1,
-                        border: 'none',
-                        padding: '10px 12px',
-                        fontSize: 12,
-                        resize: 'none',
-                        outline: 'none',
-                        background: 'var(--gen-white)',
-                      }}
-                    />
-                    <button style={{ width: 52, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}>
-                      Gen Vid
-                    </button>
-                  </div>
-                </div>
-
-                <div>
                   <div className="gen-label mb-2">Gen Animation</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, marginBottom: 8 }}>
                     {MOTION_PRESETS.map((motion) => (
@@ -834,7 +897,11 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                         step={0.05}
                         value={currentSlide?.textStyle?.motionIntensity ?? 1}
                         onChange={(e) => applyTextStylePatch({ motionIntensity: Number(e.target.value) })}
-                        style={{ width: '100%', accentColor: '#5f9dff' }}
+                        style={{
+                          width: '100%',
+                          accentColor: '#5f9dff',
+                          ['--slider-fill' as string]: `${((Number(currentSlide?.textStyle?.motionIntensity ?? 1) - 0.4) / 1.6) * 100}%`,
+                        }}
                       />
                     </div>
                     <div>
@@ -849,7 +916,11 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                         step={0.05}
                         value={currentSlide?.textStyle?.motionSpeed ?? 1}
                         onChange={(e) => applyTextStylePatch({ motionSpeed: Number(e.target.value) })}
-                        style={{ width: '100%', accentColor: '#5f9dff' }}
+                        style={{
+                          width: '100%',
+                          accentColor: '#5f9dff',
+                          ['--slider-fill' as string]: `${((Number(currentSlide?.textStyle?.motionSpeed ?? 1) - 0.5) / 1.5) * 100}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -868,30 +939,44 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                     style={{ flex: 1, border: 'none', padding: '10px 12px', fontSize: 12, outline: 'none', background: 'var(--gen-white)', color: 'var(--gen-text)' }}
                   />
                 </div>
-                <div className="space-y-1.5" style={{ maxHeight: 320, overflowY: 'auto' }}>
-                  {bundledAssetFiles.map((name, idx) => (
-                    <div
-                      key={name}
-                      style={{
-                        border: '1px solid var(--gen-border)',
-                        background: 'var(--gen-bg-soft)',
-                        padding: '8px 10px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        fontSize: 11,
-                        color: 'var(--gen-text-sub)',
-                      }}
-                    >
-                      <span>{name}</span>
-                      <span style={{ opacity: 0.6 }}>FILE {String(idx + 1).padStart(2, '0')}</span>
-                    </div>
-                  ))}
-                  {bundledAssetFiles.length === 0 && (
-                    <div style={{ padding: '10px', border: '1px solid var(--gen-border)', fontSize: 11, color: 'var(--gen-text-mute)' }}>
+                <div
+                  style={{
+                    maxHeight: 360,
+                    overflowY: 'auto',
+                    padding: 12,
+                    border: '1px solid var(--gen-border)',
+                    background: isNight ? '#07080c' : '#eef1f6',
+                  }}
+                >
+                  {bundledAssetFiles.length === 0 ? (
+                    <div style={{ padding: '10px', fontSize: 11, color: 'var(--gen-text-mute)', textAlign: 'center' }}>
                       No matching files.
                     </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(76px, 1fr))',
+                        gap: 10,
+                        alignItems: 'start',
+                        justifyItems: 'stretch',
+                      }}
+                    >
+                      {bundledAssetFiles.map((name, idx) => (
+                        <BundledAssetDraggableTile
+                          key={name}
+                          name={name}
+                          fileIndex={idx + 1}
+                          lightUi={!isNight}
+                          absoluteUrl={bundledAssetPublicUrl(name)}
+                          onAttach={() => attachBundledAssetToSlide(name)}
+                        />
+                      ))}
+                    </div>
                   )}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--gen-text-mute)', marginTop: 8, lineHeight: 1.45 }}>
+                  Click to add to the current slide. Drag into PowerPoint or another app (Chrome/Edge: drops as SVG file when the app accepts file drag).
                 </div>
               </div>
             )}
@@ -910,9 +995,130 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
   );
 }
 
+/** Bundled static SVG: preview, click → attach slide, drag → file/URL for external apps (e.g. PowerPoint). */
+function BundledAssetDraggableTile({
+  name,
+  fileIndex,
+  absoluteUrl,
+  onAttach,
+  lightUi = false,
+}: {
+  name: string;
+  fileIndex: number;
+  absoluteUrl: string;
+  onAttach: () => void;
+  lightUi?: boolean;
+}) {
+  const suppressClickRef = useRef(false);
+  const dot = name.lastIndexOf('.');
+  const ext = dot >= 0 ? name.slice(dot) : '';
+  const stem = dot >= 0 ? name.slice(0, dot) : name;
+  const shortLabel = stem.length > 11 ? `${stem.slice(0, 9)}…${ext}` : name;
+
+  const onDragStart = (e: DragEvent<HTMLDivElement>) => {
+    suppressClickRef.current = true;
+    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData('text/plain', absoluteUrl);
+    e.dataTransfer.setData('text/uri-list', absoluteUrl);
+    try {
+      e.dataTransfer.setData('DownloadURL', `image/svg+xml:${name}:${absoluteUrl}`);
+    } catch {
+      /* some environments restrict custom data types */
+    }
+  };
+
+  const onDragEnd = () => {
+    window.setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 0);
+  };
+
+  const onTileClick = (_e: MouseEvent<HTMLDivElement>) => {
+    if (suppressClickRef.current) return;
+    onAttach();
+  };
+
+  const onKeyDown = (ev: KeyboardEvent<HTMLDivElement>) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      onAttach();
+    }
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={onTileClick}
+      onKeyDown={onKeyDown}
+      title={`${name} · #${String(fileIndex).padStart(2, '0')} — click to add to slide, drag to export`}
+      className={lightUi ? 'gen-bundled-asset-tile gen-bundled-asset-tile--light' : 'gen-bundled-asset-tile'}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'stretch',
+        gap: 6,
+        padding: 8,
+        userSelect: 'none',
+        borderRadius: 2,
+        border: lightUi ? '1px solid #c5cdd8' : '1px solid rgba(255,255,255,0.1)',
+        background: lightUi ? '#ffffff' : '#111318',
+        cursor: 'grab',
+      }}
+    >
+      <div
+        style={{
+          position: 'relative',
+          height: 52,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: lightUi ? '#f4f6fa' : '#0c0d11',
+          border: lightUi ? '1px solid #dce2eb' : '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
+        <img
+          src={absoluteUrl}
+          alt=""
+          draggable={false}
+          style={{ maxWidth: '100%', maxHeight: 44, objectFit: 'contain' }}
+        />
+        <span
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            fontSize: 8,
+            fontWeight: 600,
+            letterSpacing: '0.06em',
+            color: lightUi ? 'rgba(26,32,44,0.45)' : 'rgba(245,247,255,0.5)',
+          }}
+        >
+          {String(fileIndex).padStart(2, '0')}
+        </span>
+      </div>
+      <span
+        style={{
+          fontSize: 9,
+          lineHeight: 1.25,
+          textAlign: 'center',
+          color: lightUi ? '#2d3748' : 'rgba(232,234,240,0.85)',
+          wordBreak: 'break-word',
+        }}
+      >
+        {shortLabel}
+      </span>
+    </div>
+  );
+}
+
 function MiniTabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       style={{
         flex: 1,
@@ -920,8 +1126,9 @@ function MiniTabBtn({ label, active, onClick }: { label: string; active: boolean
         border: active ? '1px solid #5f9dff' : '1px solid var(--gen-border)',
         borderLeft: label === 'Preset' ? (active ? '1px solid #5f9dff' : '1px solid var(--gen-border)') : undefined,
         background: active ? 'var(--gen-btn-active-bg)' : 'var(--gen-white)',
-        color: active ? 'var(--gen-btn-active-text)' : 'var(--gen-text-sub)',
-        fontSize: 10,
+        color: active ? 'var(--gen-btn-active-text)' : 'var(--gen-text)',
+        fontSize: label.length > 12 ? 9 : 10,
+        fontWeight: active ? 600 : 500,
         cursor: 'pointer',
       }}
     >
@@ -930,7 +1137,7 @@ function MiniTabBtn({ label, active, onClick }: { label: string; active: boolean
   );
 }
 
-function ImmersiveWebSet({
+export function ImmersiveWebSet({
   onApplyPreset,
   onAddPreset,
 }: {
@@ -941,33 +1148,33 @@ function ImmersiveWebSet({
     {
       name: 'Spline 3D Scene',
       url: 'https://spline.design/',
-      description: '실시간 3D 인터랙션/카메라 무브용 프리셋',
+      description: 'Real-time 3D interaction and camera-move presets.',
     },
     {
       name: 'Rive Motion UI',
       url: 'https://rive.app/',
-      description: 'UI 마이크로 인터랙션/상태 전환 애니메이션',
+      description: 'UI micro-interactions and state-transition motion.',
     },
     {
       name: 'Three.js WebGL',
       url: 'https://threejs.org/examples/',
-      description: 'WebGL 기반 몰입형 데모/효과 레퍼런스',
+      description: 'WebGL immersive demos and effect references.',
     },
     {
       name: 'Lottie Motion Pack',
       url: 'https://lottiefiles.com/',
-      description: '벡터 모션 에셋/아이콘 애니메이션',
+      description: 'Vector motion assets and icon animation.',
     },
     {
       name: 'GSAP Interaction',
       url: 'https://gsap.com/showcase/',
-      description: '스크롤/타임라인 기반 고급 인터랙션',
+      description: 'Scroll- and timeline-driven advanced interactions.',
     },
   ];
   return (
     <div style={{ border: '1px solid var(--gen-border)', background: 'var(--gen-white)', padding: 12 }}>
       <div className="gen-label mb-2">Immersive Interaction Web Set</div>
-      <div style={{ fontSize: 11, color: 'var(--gen-text-mute)', marginBottom: 10 }}>사이트 이동 없이 프리셋을 바로 적용할 수 있습니다.</div>
+      <div style={{ fontSize: 11, color: 'var(--gen-text-mute)', marginBottom: 10 }}>Apply presets here without leaving the app.</div>
       <div className="space-y-2">
         {items.map((it) => (
           <div
@@ -982,7 +1189,9 @@ function ImmersiveWebSet({
             <div style={{ fontSize: 10, color: 'var(--gen-text-mute)', marginBottom: 8 }}>{it.description}</div>
             <div className="flex gap-1.5">
               <button
+                type="button"
                 onClick={() => onApplyPreset(it.url)}
+                className="gen-go-btn"
                 style={{
                   flex: 1,
                   height: 26,
@@ -991,12 +1200,17 @@ function ImmersiveWebSet({
                   color: '#f5f7ff',
                   fontSize: 10,
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
                 Apply
               </button>
               <button
+                type="button"
                 onClick={() => onAddPreset(it.url)}
+                className="gen-go-btn"
                 style={{
                   flex: 1,
                   height: 26,
@@ -1004,10 +1218,16 @@ function ImmersiveWebSet({
                   background: 'var(--gen-black)',
                   color: 'var(--gen-white)',
                   fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: '0.06em',
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
+                aria-label="Add to assets"
               >
-                Add to Assets
+                GO
               </button>
             </div>
           </div>
@@ -1048,8 +1268,10 @@ function LabeledInput({
           }}
         />
         <button
+          type="button"
           onClick={onSubmit}
           disabled={!value.trim() || disabled}
+          className="gen-go-btn"
           style={{
             padding: '0 18px',
             background: 'var(--gen-btn-solid-bg)',
@@ -1057,20 +1279,24 @@ function LabeledInput({
             border: 'none',
             borderLeft: '1px solid var(--gen-border)',
             fontSize: 10,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
+            fontWeight: 600,
+            letterSpacing: '0.06em',
             cursor: 'pointer',
             opacity: !value.trim() || disabled ? 0.35 : 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
+          aria-label="Submit URL"
         >
-          Add
+          GO
         </button>
       </div>
     </div>
   );
 }
 
-function AssetCard({ asset, onDelete }: { asset: Asset; onDelete: () => void }) {
+export function AssetCard({ asset, onDelete }: { asset: Asset; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const { currentSlideIndex, addSlideMedia, addSlideFile } = usePresentationStore();
 
@@ -1196,5 +1422,3 @@ function AssetCard({ asset, onDelete }: { asset: Asset; onDelete: () => void }) 
   );
 }
 
-// Suppress unused imports from icon list used conditionally above
-void IconArrowRight;

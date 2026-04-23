@@ -1,110 +1,104 @@
 import { usePresentationStore } from '../stores/presentationStore';
 import { useRaiseHand } from '../hooks/useRaiseHand';
-import { IconHand } from './icons';
+import { IconHand, IconMic } from './icons';
 
-/**
- * Floating "raise hand" button — available during Present mode.
- * Gently hints its availability while the agent is speaking (subtle pulse),
- * and transforms into a clear "listening" affordance when engaged.
- */
 export function RaiseHandFab() {
-  const { agentMode, appMode, dialogueOpen } = usePresentationStore();
+  const { appMode, dialogueOpen } = usePresentationStore();
   const { isHandRaised, toggle } = useRaiseHand();
 
   if (appMode !== 'present') return null;
 
-  const speaking = agentMode === 'speaking' || agentMode === 'presenting';
-  // Slide left out of the way when the dialogue drawer is open
+  // Offset when dialogue drawer is open
   const rightOffset = dialogueOpen ? 384 + 32 : 32;
 
   return (
-    <>
-      <button
-        onClick={toggle}
-        aria-label={isHandRaised ? 'Finish speaking' : 'Raise hand to interrupt'}
+    <div
+      style={{
+        position: 'fixed',
+        right: rightOffset,
+        bottom: 96,
+        zIndex: 40,
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: 16,
+        transition: 'right 500ms var(--gen-ease)',
+      }}
+    >
+      {/* Mic icon */}
+      <div
         style={{
-          position: 'fixed',
-          right: rightOffset,
-          bottom: 120,
-          zIndex: 40,
-          transition: 'right 500ms cubic-bezier(0.16, 1, 0.3, 1)',
-          width: 72,
-          height: 72,
-          borderRadius: '50%',
-          border: `1px solid ${isHandRaised ? 'var(--gen-black)' : 'var(--gen-black)'}`,
-          background: isHandRaised ? 'var(--gen-black)' : 'var(--gen-white)',
-          color: isHandRaised ? 'var(--gen-white)' : 'var(--gen-black)',
-          boxShadow: isHandRaised
-            ? '0 0 0 6px rgba(10,10,10,0.08), 0 12px 36px rgba(0,0,0,0.18)'
-            : '0 8px 24px rgba(0,0,0,0.10)',
-          cursor: 'pointer',
+          width: 44,
+          height: 44,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'all var(--gen-base)',
+          color: '#ffffff',
+          cursor: 'pointer',
         }}
-        className={speaking && !isHandRaised ? 'raise-hand-hint' : ''}
       >
-        <IconHand size={28} />
-      </button>
+        <IconMic size={24} />
+      </div>
 
-      {/* Label tag */}
-      <div
+      {/* Raise Hand box */}
+      <button
+        onClick={toggle}
         style={{
-          position: 'fixed',
-          right: rightOffset,
-          bottom: 100,
-          zIndex: 40,
-          pointerEvents: 'none',
-          transition: 'right 500ms cubic-bezier(0.16, 1, 0.3, 1)',
+          width: 80,
+          height: 100,
+          background: '#ffffff',
+          borderRadius: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          border: 'none',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          cursor: 'pointer',
+          padding: 0,
         }}
       >
         <div
           style={{
-            background: isHandRaised ? 'var(--gen-black)' : 'rgba(255,255,255,0.9)',
-            color: isHandRaised ? 'var(--gen-white)' : 'var(--gen-text)',
-            border: '1px solid var(--gen-black)',
-            padding: '4px 10px',
-            fontSize: 9,
-            fontWeight: 500,
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-            textAlign: 'center',
-            width: 72,
-            transition: 'all var(--gen-base)',
+            width: 44,
+            height: 44,
+            borderRadius: '50%',
+            border: '1px solid #000000',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#000000',
           }}
         >
-          {isHandRaised ? 'Listening' : 'Raise hand'}
+          <IconHand size={22} />
         </div>
-      </div>
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: '#000000',
+            lineHeight: 1.1,
+            textAlign: 'center',
+            letterSpacing: '0.05em',
+          }}
+        >
+          RAISE<br />HAND
+        </div>
+      </button>
 
-      {/* Fullscreen listening border — visible when hand is raised */}
+      {/* Listening indicator (full screen border) */}
       {isHandRaised && (
         <div
-          aria-hidden
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 30,
             pointerEvents: 'none',
-            border: '2px solid var(--gen-black)',
-            boxShadow: 'inset 0 0 60px rgba(10,10,10,0.04)',
+            border: '3px solid #ffffff',
+            boxShadow: 'inset 0 0 100px rgba(255,255,255,0.1)',
+            zIndex: 35,
           }}
-          className="gen-fade"
         />
       )}
-
-      {/* Soft pulse animation for idle hint state */}
-      <style>{`
-        @keyframes raise-hand-pulse {
-          0%   { box-shadow: 0 8px 24px rgba(0,0,0,0.10), 0 0 0 0 rgba(10,10,10,0.22); }
-          70%  { box-shadow: 0 8px 24px rgba(0,0,0,0.10), 0 0 0 14px rgba(10,10,10,0); }
-          100% { box-shadow: 0 8px 24px rgba(0,0,0,0.10), 0 0 0 0 rgba(10,10,10,0); }
-        }
-        .raise-hand-hint {
-          animation: raise-hand-pulse 2.2s ease-out infinite;
-        }
-      `}</style>
-    </>
+    </div>
   );
 }

@@ -11,6 +11,7 @@ export function ProjectPicker() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [creating, setCreating] = useState(false);
+  const [isCreateHovered, setIsCreateHovered] = useState(false);
 
   useEffect(() => { init(); }, [init]);
 
@@ -76,8 +77,8 @@ export function ProjectPicker() {
       </div>
 
       {/* Main */}
-      <div className="flex-1 overflow-y-auto relative" style={{ zIndex: 1 }}>
-        <div className="max-w-2xl mx-auto px-10 pt-20 pb-24">
+      <div className="flex-1 overflow-hidden relative" style={{ zIndex: 1 }}>
+        <div className="max-w-2xl mx-auto px-10 pt-12 pb-10">
           {/* Heading */}
           <div className="mb-12">
             <div
@@ -138,21 +139,30 @@ export function ProjectPicker() {
               <button
                 type="submit"
                 disabled={!newName.trim() || creating}
+                onMouseEnter={() => setIsCreateHovered(true)}
+                onMouseLeave={() => setIsCreateHovered(false)}
                 style={{
                   padding: '0 20px',
                   fontSize: 10,
                   fontWeight: 500,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  background: 'rgba(255,255,255,0.26)',
+                  background: isCreateHovered && newName.trim() && !creating
+                    ? 'rgba(255,255,255,0.36)'
+                    : 'rgba(255,255,255,0.26)',
                   color: '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.35)',
+                  border: isCreateHovered && newName.trim() && !creating
+                    ? '1px solid rgba(255,255,255,0.55)'
+                    : '1px solid rgba(255,255,255,0.35)',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
                   opacity: !newName.trim() || creating ? 0.45 : 1,
-                  transition: 'opacity var(--gen-fast)',
+                  transition: 'opacity var(--gen-fast), background var(--gen-fast), border-color var(--gen-fast), box-shadow var(--gen-fast)',
+                  boxShadow: isCreateHovered && newName.trim() && !creating
+                    ? 'inset 0 0 0 1px rgba(255,255,255,0.18), 0 0 14px rgba(255,255,255,0.14)'
+                    : 'none',
                   backdropFilter: 'blur(8px)',
                 }}
               >
@@ -182,11 +192,14 @@ export function ProjectPicker() {
               </div>
             ) : (
               <div
+                className="no-scrollbar"
                 style={{
                   border: '1px solid rgba(255,255,255,0.22)',
                   background: 'linear-gradient(140deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03))',
                   backdropFilter: 'blur(12px)',
                   boxShadow: '0 16px 36px rgba(0,0,0,0.22)',
+                  maxHeight: 'calc(100vh - 420px)',
+                  overflowY: 'auto',
                 }}
               >
                 {projects.map((p, i) => (

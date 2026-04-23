@@ -1,55 +1,61 @@
 import { usePresentationStore } from '../stores/presentationStore';
-import { usePlayback } from '../hooks/usePlayback';
-import { IconArrowLeft, IconArrowRight } from './icons';
+import { IconPdf, IconEditPencil, IconText, IconComment } from './icons';
 
 export function ControlBar() {
-  const { presentation, currentSlideIndex, agentMode, isPlaying, nextSlide, prevSlide } = usePresentationStore();
-  const { pause } = usePlayback();
+  const { presentation, currentSlideIndex, uiThemeMode } = usePresentationStore();
+  const isNight = uiThemeMode === 'night';
 
   const totalSlides = presentation?.slides.length || 0;
-  const isLast = currentSlideIndex >= totalSlides - 1;
-  const navDisabled = agentMode === 'presenting' || agentMode === 'qa';
-
-  // Manual nav cancels auto-play
-  const handlePrev = () => { if (isPlaying) pause(); prevSlide(); };
-  const handleNext = () => { if (isPlaying) pause(); nextSlide(); };
 
   return (
     <div
-      className="flex items-center justify-between px-12 py-4"
-      style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(8px)', borderTop: '1px solid var(--gen-border)' }}
+      className="flex items-center justify-between px-12 py-3"
+      style={{
+        background: isNight ? 'rgba(9,12,18,0.92)' : 'rgba(255,255,255,0.9)',
+        backdropFilter: 'blur(12px)',
+        borderTop: 'none',
+        color: isNight ? '#f5f7ff' : '#000000',
+        height: 64,
+      }}
     >
-      {/* Navigation */}
-      <div className="flex items-center gap-6">
+      {/* Left: Final button */}
+      <div className="flex-1 flex justify-start">
         <button
-          onClick={handlePrev}
-          disabled={currentSlideIndex === 0 || navDisabled}
-          className="gen-btn gen-btn-ghost flex items-center gap-2"
-          style={{ padding: '10px 16px', fontSize: 11 }}
+          style={{
+            padding: '6px 20px',
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            background: 'transparent',
+            color: isNight ? '#f5f7ff' : '#000000',
+            border: `1px solid ${isNight ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)'}`,
+            cursor: 'pointer',
+          }}
         >
-          <IconArrowLeft size={14} />
-          Prev
-        </button>
-        <div className="gen-label" style={{ minWidth: 80, textAlign: 'center' }}>
-          {String(currentSlideIndex + 1).padStart(2, '0')} &nbsp;/&nbsp; {String(totalSlides).padStart(2, '0')}
-        </div>
-        <button
-          onClick={handleNext}
-          disabled={isLast || navDisabled}
-          className="gen-btn gen-btn-ghost flex items-center gap-2"
-          style={{ padding: '10px 16px', fontSize: 11 }}
-        >
-          Next
-          <IconArrowRight size={14} />
+          Final
         </button>
       </div>
 
-      {/* Slide title */}
+      {/* Center: Slide index */}
       <div
-        className="max-w-[320px] truncate"
-        style={{ fontSize: 12, color: 'var(--gen-text-sub)', letterSpacing: '0.02em' }}
+        className="flex-1 flex justify-center items-center"
+        style={{
+          fontSize: 20,
+          fontWeight: 200,
+          color: isNight ? 'rgba(245,247,255,0.95)' : 'rgba(0,0,0,0.9)',
+          letterSpacing: '0.04em',
+        }}
       >
-        {presentation?.slides[currentSlideIndex]?.title}
+        {String(currentSlideIndex + 1).padStart(2, '0')}/{String(totalSlides).padStart(2, '0')}
+      </div>
+
+      {/* Right: Icons */}
+      <div className="flex-1 flex justify-end items-center gap-7">
+        <IconPdf size={20} style={{ opacity: 0.85, cursor: 'pointer', color: '#3182ce' }} />
+        <IconEditPencil size={20} style={{ opacity: 0.85, cursor: 'pointer' }} />
+        <IconText size={20} style={{ opacity: 0.85, cursor: 'pointer' }} />
+        <IconComment size={20} style={{ opacity: 0.85, cursor: 'pointer' }} />
       </div>
     </div>
   );

@@ -7,6 +7,8 @@ export interface SlideMedia {
   kind: 'image' | 'video';
   /** Display name (filename) */
   name?: string;
+  /** Design mode: box as % of slide stage (top-left origin) */
+  layout?: { x: number; y: number; w: number; h: number };
 }
 
 export interface SlideLink {

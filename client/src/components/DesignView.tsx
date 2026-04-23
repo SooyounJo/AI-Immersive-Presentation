@@ -1,69 +1,47 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, isValidElement, cloneElement, Children } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode, isValidElement, cloneElement, Children } from 'react';
+import { Reorder } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { usePresentationStore } from '../stores/presentationStore';
-import type { Slide, SlideLink, SlideMedia, SlideFile, TemplateTextBlock } from '../types';
-import { PRESET_CARDS, STYLE_PRESETS, type PresetCard } from '../data/slidePresets';
+import type { Slide, SlideLink, SlideMedia, TemplateTextBlock } from '../types';
+import { PRESET_CARDS, type PresetCard } from '../data/slidePresets';
 import { ContextPanel } from './ContextPanel';
 import { InsightsPanel } from './InsightsPanel';
 import { SlideBackgroundLayer } from './backgrounds/OglBackgrounds';
-import { API_ROOT, projectApi } from '../api';
-import { useProjectsStore } from '../stores/projectsStore';
+import { API_ROOT } from '../api';
 import {
-  IconArrowLeft, IconArrowRight, IconPlus, IconClose, IconTrash,
-  IconLink, IconVideo, IconImages, IconComment, IconPdf, IconUpload,
+  IconPlus, IconClose, IconTrash,
+  IconLink, IconPdf,
 } from './icons';
 
 export function DesignView() {
-  const { currentProjectId } = useProjectsStore();
   const {
     presentation,
     currentSlideIndex,
     goToSlide,
-    nextSlide,
-    prevSlide,
     updateMeta,
     updateSlide,
     addSlide,
     deleteSlide,
-    moveSlide,
-    addSlideLink,
-    removeSlideLink,
-    addSlideMedia,
-    removeSlideMedia,
-    removeSlideFile,
-    appendSlides,
+    setSlides,
+    uiThemeMode: themeMode,
+    setUiThemeMode: setThemeMode,
   } = usePresentationStore();
 
   const [section] = useState<'meta' | 'slides' | 'insights'>('slides');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [canvasMode, setCanvasMode] = useState<'preview' | 'slides'>('preview');
-  const [presetOpen, setPresetOpen] = useState(false);
-  const [themeMode, setThemeMode] = useState<'morning' | 'night'>(() => {
-    if (typeof window === 'undefined') return 'night';
-    return (window.localStorage.getItem('voix:designTheme') as 'morning' | 'night') || 'night';
-  });
-  const [presetSceneMode, setPresetSceneMode] = useState<'slide' | 'scene'>('slide');
-  const [selectedStylePresetId, setSelectedStylePresetId] = useState('clean-light');
+  const [canvasMode] = useState<'preview' | 'slides'>('preview');
   const [voicePreviewUrls, setVoicePreviewUrls] = useState<Record<number, string>>({});
   const [playingVoiceSlideId, setPlayingVoiceSlideId] = useState<number | null>(null);
   const [selectedVoice, setSelectedVoice] = useState<'male' | 'female'>('male');
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleSave = async () => {
-    setSaveStatus('saving');
-    try {
-      const res = await fetch(`${projectApi()}/presentation`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(presentation),
-      });
-      if (!res.ok) throw new Error('Save failed');
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    } catch (e) {
-      console.error(e);
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 2000);
+  const handleReorder = (newSlides: Slide[]) => {
+    if (!presentation) return;
+    const currentSlideId = presentation.slides[currentSlideIndex].id;
+    const newIndex = newSlides.findIndex((s) => s.id === currentSlideId);
+    setSlides(newSlides);
+    if (newIndex !== -1) {
+      goToSlide(newIndex);
     }
   };
 
@@ -119,39 +97,6 @@ export function DesignView() {
     }
   };
 
-  const applyPreset = (preset: PresetCard) => {
-    const selectedStyle = STYLE_PRESETS.find((s) => s.id === selectedStylePresetId) ?? STYLE_PRESETS[0];
-    addSlide({
-      templateId: preset.id,
-      title: preset.title,
-      content: preset.content,
-      speakerNotes: preset.speakerNotes,
-      visualType: preset.visualType,
-      sceneMode: presetSceneMode,
-      allowQA: true,
-      background: selectedStyle.background,
-    });
-    setPresetOpen(false);
-  };
-
-  const presetSeenKey = useMemo(
-    () => `presentation-agent:presetSeen:${currentProjectId ?? 'default'}`,
-    [currentProjectId],
-  );
-
-  useEffect(() => {
-    if (!presentation) return;
-    const seen = typeof window !== 'undefined' ? window.localStorage.getItem(presetSeenKey) : '1';
-    if (!seen) {
-      setPresetOpen(true);
-      if (typeof window !== 'undefined') window.localStorage.setItem(presetSeenKey, '1');
-    }
-  }, [presentation, presetSeenKey]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') window.localStorage.setItem('voix:designTheme', themeMode);
-  }, [themeMode]);
-
   useEffect(() => {
     return () => {
       stopPreviewAudio();
@@ -192,7 +137,7 @@ export function DesignView() {
       }}
     >
       <div
-        className="w-[236px] shrink-0 min-h-0 flex flex-col overflow-hidden"
+        className="w-[272px] shrink-0 min-h-0 flex flex-col overflow-hidden"
         style={{
           height: 'calc(100vh - 52px)',
           maxHeight: 'calc(100vh - 52px)',
@@ -203,65 +148,87 @@ export function DesignView() {
           boxShadow: uiPanelShadow,
         }}
       >
-        <div className="p-2 min-h-0 flex-1 overflow-y-auto" style={{ overscrollBehavior: 'contain', paddingBottom: 78, WebkitOverflowScrolling: 'touch' }}>
-          {presentation.slides.map((s, i) => (
-            <div
-              key={s.id}
-              onClick={() => goToSlide(i)}
-              style={{
-                padding: 0,
-                border: 'none',
-                borderRadius: 0,
-                marginBottom: 8,
-                background: 'transparent',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ fontSize: 12, marginBottom: 6, color: isNight ? '#a7a9af' : '#666', paddingLeft: 2 }}>{i + 1}</div>
-              <div
+        <div className="p-2 min-h-0 flex-1 overflow-y-auto no-scrollbar" style={{ overscrollBehavior: 'contain', paddingBottom: 78, WebkitOverflowScrolling: 'touch' }}>
+          <Reorder.Group axis="y" values={presentation.slides} onReorder={handleReorder}>
+            {presentation.slides.map((s, i) => (
+              <Reorder.Item
+                key={s.id}
+                value={s}
+                onClick={() => goToSlide(i)}
                 style={{
-                  width: '100%',
-                  aspectRatio: '16 / 9',
-                  border: i === currentSlideIndex ? '2px solid #5f9dff' : '1px solid #303646',
-                  borderRadius: 6,
-                  background: isNight ? 'linear-gradient(180deg, rgba(17,18,22,0.92) 0%, rgba(12,13,16,0.95) 100%)' : '#ffffff',
-                  padding: 8,
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'flex-start',
+                  padding: 0,
+                  border: 'none',
+                  borderRadius: 0,
+                  marginBottom: 8,
+                  background: 'transparent',
+                  cursor: 'grab',
+                  listStyle: 'none',
                 }}
               >
-                <div className="gen-label" style={{ color: isNight ? '#c2c4ca' : '#666' }}>{s.sceneMode === 'scene' ? 'SCENE' : 'SLIDE'}</div>
-                <div style={{ fontSize: 13, marginTop: 4, fontWeight: 600, color: isNight ? '#f5f7ff' : '#171717' }}>{s.title}</div>
-                <div style={{ fontSize: 9, color: isNight ? '#9aa3bc' : '#666', marginTop: 3 }} className="truncate">
-                  {(s.content || '').replace(/[#>*`-]/g, '').slice(0, 40)}
-                </div>
-              </div>
-              <div className="flex items-start justify-end gap-2" style={{ marginTop: 4, paddingRight: 2 }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (presentation.slides.length > 1) deleteSlide(i);
-                  }}
-                  title="Delete slide"
+                <div style={{ fontSize: 12, marginBottom: 6, color: isNight ? '#a7a9af' : '#666', paddingLeft: 2 }}>{i + 1}</div>
+                <div
                   style={{
-                    border: 'none',
-                    background: 'transparent',
-                    fontSize: 18,
-                    lineHeight: 1,
-                    color: isNight ? '#cfd6e8' : '#444',
-                    cursor: 'pointer',
-                    padding: 0,
+                    width: '100%',
+                    aspectRatio: '16 / 9',
+                    border: i === currentSlideIndex
+                      ? '1px solid #5f9dff'
+                      : (isNight ? '1px solid #303646' : '1px solid #c5cad4'),
+                    borderRadius: 6,
+                    background: isNight ? 'linear-gradient(180deg, rgba(17,18,22,0.92) 0%, rgba(12,13,16,0.95) 100%)' : '#ffffff',
+                    padding: 8,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'flex-start',
                   }}
                 >
-                  -
-                </button>
-              </div>
-            </div>
-          ))}
+                  <div className="gen-label" style={{ color: isNight ? '#c2c4ca' : '#666' }}>{s.sceneMode === 'scene' ? 'SCENE' : 'SLIDE'}</div>
+                  <div style={{ fontSize: 13, marginTop: 4, fontWeight: 600, color: isNight ? '#f5f7ff' : '#171717' }}>{s.title}</div>
+                  <div
+                    style={{
+                      fontSize: 9,
+                      lineHeight: 1.35,
+                      color: isNight ? '#b8c4d8' : '#4b5563',
+                      marginTop: 3,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical' as const,
+                      overflow: 'hidden',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {slideRailPreviewSubtitle(s)}
+                  </div>
+                </div>
+                <div className="flex items-start justify-end gap-2" style={{ marginTop: 4, paddingRight: 2 }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (presentation.slides.length > 1) deleteSlide(i);
+                    }}
+                    title="Delete slide"
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      fontSize: 18,
+                      lineHeight: 1,
+                      color: isNight ? '#cfd6e8' : '#444',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    -
+                  </button>
+                </div>
+              </Reorder.Item>
+            ))}
+          </Reorder.Group>
           <button
-            onClick={() => setPresetOpen(true)}
+            onClick={() => addSlide({
+              background: slide?.background,
+              textStyle: slide?.textStyle,
+              sceneMode: slide?.sceneMode ?? 'slide',
+            })}
             style={{
               width: '100%',
               height: 34,
@@ -283,7 +250,7 @@ export function DesignView() {
         <div style={{ height: 10, borderTop: uiBorder, flexShrink: 0 }} />
         <div style={{ position: 'absolute', left: 10, bottom: 28, display: 'flex', justifyContent: 'flex-start', zIndex: 4 }}>
           <button
-            onClick={() => setThemeMode((p) => (p === 'night' ? 'morning' : 'night'))}
+            onClick={() => setThemeMode(themeMode === 'night' ? 'morning' : 'night')}
             style={{
               width: 44,
               height: 44,
@@ -331,42 +298,24 @@ export function DesignView() {
         }}
       >
         <div
-          className="px-4 py-2 flex items-center justify-between"
+          className="px-4 py-2 flex items-center justify-between gap-3"
           style={{
             borderBottom: uiBorder,
             background: uiSurface,
             backdropFilter: 'blur(8px)',
           }}
         >
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCanvasMode('preview')}
-              style={{
-                height: 25,
-                padding: '0 11px',
-                border: canvasMode === 'preview' ? '1px solid #9ca8c8' : '1px solid rgba(255,255,255,0.14)',
-                background: canvasMode === 'preview' ? 'rgba(56,58,68,0.92)' : 'rgba(22,23,28,0.92)',
-                color: '#f5f7ff',
-                fontSize: 10,
-                cursor: 'pointer',
-              }}
-            >
-              Agentic Mode
-            </button>
-            <button
-              onClick={() => setCanvasMode('slides')}
-              style={{
-                height: 25,
-                padding: '0 11px',
-                border: canvasMode === 'slides' ? '1px solid #9ca8c8' : '1px solid rgba(255,255,255,0.14)',
-                background: canvasMode === 'slides' ? 'rgba(56,58,68,0.92)' : 'rgba(22,23,28,0.92)',
-                color: '#f5f7ff',
-                fontSize: 10,
-                cursor: 'pointer',
-              }}
-            >
-              Slide Mode
-            </button>
+          <div
+            className="truncate"
+            style={{
+              fontSize: 12,
+              color: isNight ? '#d7def3' : '#3a3a3a',
+              letterSpacing: '0.06em',
+              textTransform: 'uppercase',
+            }}
+            title={presentation.title || 'Untitled'}
+          >
+            {presentation.title || 'Untitled'}
           </div>
           <div className="gen-label" style={{ color: '#f5f7ff' }}>{`${String(currentSlideIndex + 1).padStart(2, '0')}/${String(totalSlides).padStart(2, '0')}`}</div>
         </div>
@@ -384,21 +333,38 @@ export function DesignView() {
                   currentSlideIndex={currentSlideIndex}
                   totalSlides={totalSlides}
                   canvasMode={canvasMode}
+                  isNight={isNight}
                   onUpdateSlide={(patch) => updateSlide(currentSlideIndex, patch)}
                   hasGeneratedVoice={Boolean(voicePreviewUrls[slide.id])}
                   isVoicePlaying={playingVoiceSlideId === slide.id}
                   onPlayGeneratedVoice={() => playGeneratedVoice(slide.id)}
                 />
-                <div style={{ background: isNight ? '#000000' : '#d8d8d8', border: isNight ? '1px solid #1b1f2a' : '1px solid #c7c7c7', borderTop: 'none', padding: '12px 10px', display: 'grid', gridTemplateColumns: '170px 1fr 74px', gap: 10 }}>
-                  <div>
-                    <div className="gen-label" style={{ marginBottom: 6, color: '#d7def3' }}>보이스 선택</div>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+                <div
+                  style={{
+                    background: isNight ? '#000000' : '#e8ecf2',
+                    border: isNight ? '1px solid #1b1f2a' : '1px solid #b8c0cc',
+                    marginTop: 10,
+                    padding: '12px 10px',
+                    display: 'grid',
+                    gridTemplateColumns: 'auto minmax(0, 1fr) 88px',
+                    gridTemplateRows: 'auto 68px',
+                    columnGap: 0,
+                    rowGap: 6,
+                    alignItems: 'stretch',
+                  }}
+                >
+                  <div className="gen-label" style={{ color: isNight ? '#d7def3' : '#3a4556', alignSelf: 'end', marginRight: 12 }}>Select Voice</div>
+                  <div className="gen-label" style={{ color: isNight ? '#d7def3' : '#3a4556', alignSelf: 'end' }}>Slide Note</div>
+                  <div />
+
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginRight: 12 }}>
                       {[
-                        { id: 'male' as const, label: '남성보이스' },
-                        { id: 'female' as const, label: '여성보이스' },
+                        { id: 'male' as const, label: 'Male' },
+                        { id: 'female' as const, label: 'Female' },
                       ].map((v) => (
                         <button
                           key={v.id}
+                          type="button"
                           onClick={() => setSelectedVoice(v.id)}
                           style={{ textAlign: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
                         >
@@ -407,43 +373,75 @@ export function DesignView() {
                               width: 30,
                               height: 30,
                               borderRadius: '50%',
-                              background: selectedVoice === v.id ? '#3b4f7a' : '#2a3040',
-                              border: selectedVoice === v.id ? '1px solid #5f9dff' : '1px solid #3a4256',
+                              background: isNight
+                                ? (selectedVoice === v.id ? '#3b4f7a' : '#2a3040')
+                                : (selectedVoice === v.id ? '#c5daf8' : '#dfe6f0'),
+                              border: isNight
+                                ? (selectedVoice === v.id ? '1px solid #5f9dff' : '1px solid #3a4256')
+                                : (selectedVoice === v.id ? '1px solid #5f9dff' : '1px solid #9aa8bc'),
                               margin: '0 auto',
                               boxShadow: selectedVoice === v.id ? '0 0 0 1px rgba(95,157,255,0.35) inset' : 'none',
                             }}
                           />
-                          <div style={{ fontSize: 10, marginTop: 3, color: selectedVoice === v.id ? '#e7efff' : '#c8d0e6' }}>{v.label}</div>
+                          <div style={{
+                            fontSize: 10,
+                            marginTop: 3,
+                            color: isNight
+                              ? (selectedVoice === v.id ? '#e7efff' : '#c8d0e6')
+                              : (selectedVoice === v.id ? '#1a2d4d' : '#4a5568'),
+                          }}
+                          >
+                            {v.label}
+                          </div>
                         </button>
                       ))}
-                    </div>
                   </div>
-                  <div>
-                    <div className="gen-label" style={{ marginBottom: 6, color: '#d7def3' }}>Slide Note</div>
-                    <textarea
-                      className="gen-input"
-                      rows={3}
-                      value={slide.speakerNotes}
-                      onChange={(e) => updateSlide(currentSlideIndex, { speakerNotes: e.target.value })}
-                      placeholder="스크립트를 작성하세요"
-                      style={{ background: '#0f131d', color: '#f5f7ff', border: '1px solid #343c4f', minHeight: 68, padding: '10px 12px' }}
-                    />
-                  </div>
+                  <textarea
+                    className="gen-input"
+                    rows={3}
+                    value={slide.speakerNotes}
+                    onChange={(e) => updateSlide(currentSlideIndex, { speakerNotes: e.target.value })}
+                    placeholder="스크립트를 작성하세요"
+                    style={{
+                      background: isNight ? '#0f131d' : '#ffffff',
+                      color: isNight ? '#f5f7ff' : '#171717',
+                      border: isNight ? '1px solid #343c4f' : '1px solid #a8b4c4',
+                      borderRight: 'none',
+                      borderRadius: '4px 0 0 4px',
+                      height: 68,
+                      minHeight: 68,
+                      maxHeight: 68,
+                      resize: 'none',
+                      boxSizing: 'border-box',
+                      padding: '10px 12px',
+                    }}
+                  />
                   <button
+                    type="button"
                     onClick={handleGenerateVoice}
                     disabled={saveStatus === 'saving'}
+                    className="gen-go-btn"
                     style={{
-                      border: '1px solid #3a4256',
-                      background: '#252b39',
-                      color: '#f5f7ff',
+                      border: isNight ? '1px solid #343c4f' : '1px solid #8b98ab',
+                      borderRadius: '0 4px 4px 0',
+                      background: isNight ? '#252b39' : '#c5cedd',
+                      color: isNight ? '#f5f7ff' : '#121826',
                       fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.06em',
                       lineHeight: 1.2,
                       cursor: 'pointer',
-                      minHeight: 56,
-                      padding: '0 4px',
+                      height: 68,
+                      minHeight: 68,
+                      alignSelf: 'stretch',
+                      padding: '0 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
+                    aria-label="Generate voice"
                   >
-                    {saveStatus === 'saving' ? 'Saving…' : 'Generate Voice'}
+                    GO
                   </button>
                 </div>
               </>
@@ -469,13 +467,6 @@ export function DesignView() {
           <ContextPanel themeMode={themeMode} />
         </div>
       </div>
-
-      {presetOpen && (
-        <PresetPickerModal
-          onClose={() => setPresetOpen(false)}
-          onSelect={applyPreset}
-        />
-      )}
     </div>
   );
 }
@@ -551,6 +542,12 @@ function createEditableTemplateBlocks(
   title: string,
   body: string,
 ): TemplateTextBlock[] {
+  if (templateId === 'figma-1') {
+    return [
+      { id: 'title-1', text: title || '', x: 6, y: 22, fontSize: 56, fontWeight: 700, maxWidth: 88, zIndex: 2 },
+      { id: 'body-1', text: body || '', x: 6, y: 40, fontSize: 24, fontWeight: 400, maxWidth: 88, zIndex: 1 },
+    ];
+  }
   if (templateId === 'figma-6') {
     return [
       { id: 'title-1', text: title || '', x: 18, y: 45, fontSize: 38, fontWeight: 700, maxWidth: 34, zIndex: 2 },
@@ -562,6 +559,15 @@ function createEditableTemplateBlocks(
     { id: 'title-1', text: title || '', x: 11, y: 14, fontSize: 30, fontWeight: 700, maxWidth: 78, zIndex: 2 },
     { id: 'body-1', text: body || '', x: 11, y: 25, fontSize: 14, fontWeight: 400, maxWidth: 78, zIndex: 1 },
   ];
+}
+
+/** Strip markdown title lines for slide-rail subtitle preview */
+function slideRailPreviewSubtitle(s: { content?: string; title?: string }): string {
+  const lines = (s.content || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const bodyLines = lines.filter((l) => !l.startsWith('#'));
+  const t = bodyLines.join(' ').replace(/\s+/g, ' ').trim();
+  if (t) return t.length > 72 ? `${t.slice(0, 69)}…` : t;
+  return (s.title || '').slice(0, 56);
 }
 
 function normalizePresetTree(
@@ -734,7 +740,7 @@ function TemplatePreview({ preset }: { preset: PresetCard }) {
   );
 }
 
-function PresetPickerModal({
+export function PresetPickerModal({
   onClose,
   onSelect,
 }: {
@@ -833,9 +839,10 @@ function TemplateSection({
 
 function SlideStagePanel({
   slide,
-  currentSlideIndex,
-  totalSlides,
+  currentSlideIndex: _currentSlideIndex,
+  totalSlides: _totalSlides,
   canvasMode,
+  isNight,
   onUpdateSlide,
   hasGeneratedVoice,
   isVoicePlaying,
@@ -845,11 +852,25 @@ function SlideStagePanel({
   currentSlideIndex: number;
   totalSlides: number;
   canvasMode: 'preview' | 'slides';
+  isNight: boolean;
   onUpdateSlide: (patch: Partial<Slide>) => void;
   hasGeneratedVoice: boolean;
   isVoicePlaying: boolean;
   onPlayGeneratedVoice: () => void;
 }) {
+  const stageCanvasRef = useRef<HTMLDivElement>(null);
+  const [selectedMediaUrl, setSelectedMediaUrl] = useState<string | null>(null);
+  const [mediaPtr, setMediaPtr] = useState<
+    | { kind: 'move'; url: string; ptrOffsetX: number; ptrOffsetY: number; w: number; h: number }
+    | { kind: 'resize'; url: string; base: { x: number; y: number; w: number; h: number }; sx: number; sy: number }
+    | null
+  >(null);
+
+  const slideRef = useRef(slide);
+  slideRef.current = slide;
+  const mediaPtrRef = useRef(mediaPtr);
+  mediaPtrRef.current = mediaPtr;
+
   const parsed = parseContentLines(slide.content || '');
   const viewMode = canvasMode === 'slides' ? 'wireframe' : 'render';
   const legacyBackgroundMedia = (slide.media ?? []).find(
@@ -859,9 +880,78 @@ function SlideStagePanel({
         || m.url.includes('reactbits.dev/backgrounds')
       ),
   );
-  const previewVisualMedia = (slide.media ?? []).find(
-    (m) => (m.kind === 'image' || m.kind === 'video') && m !== legacyBackgroundMedia,
+  const visualMediaItems = (slide.media ?? []).filter((m) => {
+    if (m.kind !== 'image' && m.kind !== 'video') return false;
+    if (legacyBackgroundMedia && m.url === legacyBackgroundMedia.url) return false;
+    return true;
+  });
+  const mediaLayoutDefault = (m: SlideMedia, index: number) =>
+    m.layout ?? (index === 0 ? { x: 4, y: 4, w: 92, h: 40 } : { x: 8, y: 48, w: 84, h: 36 });
+
+  const applyMediaLayout = useCallback(
+    (url: string, layout: { x: number; y: number; w: number; h: number }) => {
+      const next = layout;
+      const clamped = {
+        x: Math.max(0, Math.min(94, next.x)),
+        y: Math.max(0, Math.min(94, next.y)),
+        w: Math.max(8, Math.min(100 - next.x, next.w)),
+        h: Math.max(8, Math.min(100 - next.y, next.h)),
+      };
+      const s = slideRef.current;
+      onUpdateSlide({
+        media: (s.media ?? []).map((item) => (item.url === url ? { ...item, layout: clamped } : item)),
+      });
+    },
+    [onUpdateSlide],
   );
+
+  useEffect(() => {
+    if (!mediaPtr) return;
+    const onMove = (e: PointerEvent) => {
+      const p = mediaPtrRef.current;
+      if (!p) return;
+      const stage = stageCanvasRef.current;
+      if (!stage) return;
+      const r = stage.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) return;
+      if (p.kind === 'move') {
+        const xPct = ((e.clientX - p.ptrOffsetX - r.left) / r.width) * 100;
+        const yPct = ((e.clientY - p.ptrOffsetY - r.top) / r.height) * 100;
+        applyMediaLayout(p.url, {
+          x: Math.max(0, Math.min(100 - p.w, xPct)),
+          y: Math.max(0, Math.min(100 - p.h, yPct)),
+          w: p.w,
+          h: p.h,
+        });
+      } else {
+        const dx = ((e.clientX - p.sx) / r.width) * 100;
+        const dy = ((e.clientY - p.sy) / r.height) * 100;
+        applyMediaLayout(p.url, {
+          x: p.base.x,
+          y: p.base.y,
+          w: p.base.w + dx,
+          h: p.base.h + dy,
+        });
+      }
+    };
+    const onUp = () => setMediaPtr(null);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [mediaPtr, applyMediaLayout]);
+
+  useEffect(() => {
+    const onDocPointerDown = (e: PointerEvent) => {
+      const el = stageCanvasRef.current;
+      if (!el || el.contains(e.target as Node)) return;
+      setSelectedMediaUrl(null);
+    };
+    window.addEventListener('pointerdown', onDocPointerDown);
+    return () => window.removeEventListener('pointerdown', onDocPointerDown);
+  }, []);
   const hasBackground = Boolean(slide.background?.kind);
   const backgroundKind = slide.background?.kind;
   const hasProceduralBackground = backgroundKind === 'darkVeil'
@@ -885,12 +975,17 @@ function SlideStagePanel({
   const subTextColor = isDarkBg ? 'rgba(245,247,255,0.88)' : '#2f2f2f';
   const textShadow = isDarkBg ? '0 1px 2px rgba(0,0,0,0.45)' : '0 1px 2px rgba(255,255,255,0.4)';
   return (
-    <div style={{ border: '1px solid #2b2f39', background: '#1f2633', padding: 10 }}>
+    <div style={{
+      border: isNight ? '1px solid #2b2f39' : '1px solid #c5ccd6',
+      background: isNight ? '#1f2633' : '#f2f4f8',
+      padding: 10,
+    }}
+    >
       <div
         style={{
           width: '100%',
           height: 'clamp(340px, 62vh, 620px)',
-          background: '#252b36',
+          background: isNight ? '#252b36' : '#e4e8ef',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -899,6 +994,8 @@ function SlideStagePanel({
         }}
       >
         <div
+          id="design-slide-export-root"
+          ref={stageCanvasRef}
           style={{
             width: 'min(100%, calc(clamp(340px, 62vh, 620px) * 16 / 9))',
             height: 'auto',
@@ -921,25 +1018,106 @@ function SlideStagePanel({
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
             />
           ) : null}
-          {canvasMode === 'preview' && previewVisualMedia ? (
-            previewVisualMedia.kind === 'video' ? (
-              <video
-                src={previewVisualMedia.url}
-                style={{ width: '100%', maxHeight: 240, objectFit: 'contain', marginBottom: 12, border: '1px solid #ececec', position: 'relative', zIndex: 1 }}
-                autoPlay
-                muted
-                loop
-                playsInline
-              />
-            ) : (
-              <img
-                src={previewVisualMedia.url}
-                alt={previewVisualMedia.name || ''}
-                style={{ width: '100%', maxHeight: 240, objectFit: 'contain', marginBottom: 12, border: '1px solid #ececec', position: 'relative', zIndex: 1 }}
-              />
-            )
-          ) : null}
-          <div style={{ position: 'absolute', inset: 0, padding: 10, overflow: 'hidden' }}>
+          {canvasMode === 'preview'
+            && visualMediaItems.map((m, mediaIdx) => {
+              const L = mediaLayoutDefault(m, mediaIdx);
+              const selected = selectedMediaUrl === m.url;
+              return (
+                <div
+                  key={`${m.url}-${mediaIdx}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedMediaUrl(m.url);
+                  }}
+                  onPointerDown={(e) => {
+                    if ((e.target as HTMLElement).closest('[data-media-resize]')) return;
+                    const stage = stageCanvasRef.current;
+                    if (!stage) return;
+                    const r = stage.getBoundingClientRect();
+                    if (r.width < 1 || r.height < 1) return;
+                    e.stopPropagation();
+                    setSelectedMediaUrl(m.url);
+                    setMediaPtr({
+                      kind: 'move',
+                      url: m.url,
+                      ptrOffsetX: e.clientX - (r.left + (L.x / 100) * r.width),
+                      ptrOffsetY: e.clientY - (r.top + (L.y / 100) * r.height),
+                      w: L.w,
+                      h: L.h,
+                    });
+                  }}
+                  style={{
+                    position: 'absolute',
+                    left: `${L.x}%`,
+                    top: `${L.y}%`,
+                    width: `${L.w}%`,
+                    height: `${L.h}%`,
+                    zIndex: 2,
+                    boxSizing: 'border-box',
+                    border: selected ? '2px solid #5f9dff' : '1px solid rgba(228,228,228,0.85)',
+                    borderRadius: 4,
+                    overflow: 'hidden',
+                    cursor: mediaPtr?.url === m.url && mediaPtr.kind === 'move' ? 'grabbing' : 'grab',
+                    background: 'rgba(0,0,0,0.04)',
+                  }}
+                >
+                  {m.kind === 'video' ? (
+                    <video
+                      src={m.url}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', pointerEvents: 'none' }}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={m.url}
+                      alt={m.name || ''}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', pointerEvents: 'none' }}
+                    />
+                  )}
+                  {selected ? (
+                    <div
+                      data-media-resize
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        const stage = stageCanvasRef.current;
+                        if (!stage) return;
+                        setMediaPtr({
+                          kind: 'resize',
+                          url: m.url,
+                          base: { ...L },
+                          sx: e.clientX,
+                          sy: e.clientY,
+                        });
+                      }}
+                      style={{
+                        position: 'absolute',
+                        right: -2,
+                        bottom: -2,
+                        width: 12,
+                        height: 12,
+                        borderRadius: 2,
+                        background: '#5f9dff',
+                        border: '1px solid #0f1420',
+                        cursor: 'nwse-resize',
+                        zIndex: 3,
+                      }}
+                    />
+                  ) : null}
+                </div>
+              );
+            })}
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              padding: 10,
+              overflow: 'hidden',
+              pointerEvents: canvasMode === 'preview' && visualMediaItems.length > 0 ? 'none' : 'auto',
+            }}
+          >
             <SlideTemplateCanvas
               slide={slide}
               parsed={parsed}
@@ -948,10 +1126,13 @@ function SlideStagePanel({
               subTextColor={subTextColor}
               textShadow={textShadow}
               onUpdateSlide={onUpdateSlide}
+              pointerThroughCanvas={canvasMode === 'preview' && visualMediaItems.length > 0}
             />
           </div>
           {hasGeneratedVoice && (
             <button
+              type="button"
+              data-export-hide
               onClick={onPlayGeneratedVoice}
               title="Play generated voice"
               style={{
@@ -986,6 +1167,7 @@ function SlideTemplateCanvas({
   subTextColor,
   textShadow,
   onUpdateSlide,
+  pointerThroughCanvas = false,
 }: {
   slide: Slide;
   parsed: { title: string; bullets: string[]; quote: string; tableRows: string[] };
@@ -994,6 +1176,8 @@ function SlideTemplateCanvas({
   subTextColor: string;
   textShadow: string;
   onUpdateSlide: (patch: Partial<Slide>) => void;
+  /** When true, only explicit children receive pointer events (e.g. so slide media can be clicked). */
+  pointerThroughCanvas?: boolean;
 }) {
   const editableTemplateId = slide.templateId?.startsWith('figma-') ? slide.templateId : null;
   const textSizeScale = slide.textStyle?.sizeScale ?? 0.76;
@@ -1010,7 +1194,33 @@ function SlideTemplateCanvas({
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [clipboardBlock, setClipboardBlock] = useState<TemplateTextBlock | null>(null);
   const [dragInfo, setDragInfo] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
+  const [resizeInfo, setResizeInfo] = useState<{
+    id: string;
+    startClientX: number;
+    startWpx: number;
+    origMaxWidth: number;
+    origFontSize: number;
+  } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const dragInfoRef = useRef(dragInfo);
+  dragInfoRef.current = dragInfo;
+  const resizeInfoRef = useRef(resizeInfo);
+  resizeInfoRef.current = resizeInfo;
+  const slideRef = useRef(slide);
+  slideRef.current = slide;
+
+  /** Legacy welcome / title slides had no templateId → static canvas, no selection. Promote to figma-1 + blocks. */
+  useEffect(() => {
+    if (slide.templateId) return;
+    if (slide.visualType !== 'title') return;
+    if ((slide.templateTextBlocks ?? []).length > 0) return;
+    const body = (slide.content || '').replace(/^#\s[^\n]+/m, '').trim();
+    onUpdateSlide({
+      templateId: 'figma-1',
+      sceneMode: slide.sceneMode ?? 'slide',
+      templateTextBlocks: createEditableTemplateBlocks('figma-1', slide.title || '', body),
+    });
+  }, [slide.templateId, slide.visualType, slide.templateTextBlocks, slide.title, slide.content, slide.sceneMode, onUpdateSlide]);
 
   useEffect(() => {
     if (!editableTemplateId) return;
@@ -1094,17 +1304,45 @@ function SlideTemplateCanvas({
     updateBlock(id, { zIndex: minZ - 1 });
   };
 
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragInfo) return;
-    const host = editableHostRef.current;
-    if (!host) return;
-    const rect = host.getBoundingClientRect();
-    const xPct = ((e.clientX - rect.left - dragInfo.offsetX) / rect.width) * 100;
-    const yPct = ((e.clientY - rect.top - dragInfo.offsetY) / rect.height) * 100;
-    updateBlock(dragInfo.id, { x: Math.max(0, Math.min(92, xPct)), y: Math.max(0, Math.min(92, yPct)) });
-  };
-
-  const onPointerUp = () => setDragInfo(null);
+  useEffect(() => {
+    if (!dragInfo && !resizeInfo) return;
+    const onMove = (e: PointerEvent) => {
+      const host = editableHostRef.current;
+      if (!host) return;
+      const rect = host.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) return;
+      const blocks = slideRef.current.templateTextBlocks ?? [];
+      const rz = resizeInfoRef.current;
+      if (rz) {
+        const dx = e.clientX - rz.startClientX;
+        const newWpx = Math.max(40, rz.startWpx + dx);
+        const newMaxWidthPct = Math.min(96, Math.max(10, (newWpx / rect.width) * 100));
+        const scale = newWpx / rz.startWpx;
+        const newFs = Math.max(7, Math.round(rz.origFontSize * scale * 1000) / 1000);
+        onUpdateSlide({
+          templateTextBlocks: blocks.map((b) => (b.id === rz.id ? { ...b, maxWidth: newMaxWidthPct, fontSize: newFs } : b)),
+        });
+        return;
+      }
+      const dg = dragInfoRef.current;
+      if (!dg) return;
+      const xPct = ((e.clientX - rect.left - dg.offsetX) / rect.width) * 100;
+      const yPct = ((e.clientY - rect.top - dg.offsetY) / rect.height) * 100;
+      onUpdateSlide({
+        templateTextBlocks: blocks.map((b) => (b.id === dg.id ? { ...b, x: Math.max(0, Math.min(92, xPct)), y: Math.max(0, Math.min(92, yPct)) } : b)),
+      });
+    };
+    const onUp = () => {
+      setDragInfo(null);
+      setResizeInfo(null);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [dragInfo, resizeInfo, onUpdateSlide]);
 
   if (editableTemplateId && (slide.templateTextBlocks ?? []).length > 0) {
     const editableSpecialRaw = renderSpecialTemplate(
@@ -1126,10 +1364,13 @@ function SlideTemplateCanvas({
     return (
       <div
         ref={editableHostRef}
-        style={{ position: 'relative', zIndex: 2, width: '100%', height: '100%' }}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          width: '100%',
+          height: '100%',
+          pointerEvents: pointerThroughCanvas ? 'none' : 'auto',
+        }}
       >
         {editableSpecial && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 1, overflow: 'hidden', pointerEvents: 'none' }}>
@@ -1152,6 +1393,7 @@ function SlideTemplateCanvas({
             key={block.id}
             onPointerDown={(e) => {
               const target = e.target as HTMLElement;
+              if (target.closest('[data-text-resize]')) return;
               if (target.closest('[contenteditable="true"]')) return;
               const host = editableHostRef.current;
               if (!host) return;
@@ -1163,7 +1405,6 @@ function SlideTemplateCanvas({
                 offsetX: e.clientX - blockRect.left,
                 offsetY: e.clientY - blockRect.top,
               });
-              (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
               if (hostRect.width < 1 || hostRect.height < 1) setDragInfo(null);
             }}
             onContextMenu={(e) => {
@@ -1185,6 +1426,7 @@ function SlideTemplateCanvas({
               background: selectedBlockId === block.id ? 'rgba(14,21,36,0.08)' : 'transparent',
               cursor: 'move',
               userSelect: 'none',
+              pointerEvents: 'auto',
             }}
             onClick={(e) => {
               e.stopPropagation();
@@ -1214,6 +1456,36 @@ function SlideTemplateCanvas({
             >
               {block.text}
             </div>
+            {selectedBlockId === block.id ? (
+              <div
+                data-text-resize
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  const wrap = (e.currentTarget as HTMLElement).parentElement as HTMLDivElement | null;
+                  if (!wrap) return;
+                  const br = wrap.getBoundingClientRect();
+                  setResizeInfo({
+                    id: block.id,
+                    startClientX: e.clientX,
+                    startWpx: br.width,
+                    origMaxWidth: block.maxWidth ?? 40,
+                    origFontSize: block.fontSize,
+                  });
+                }}
+                style={{
+                  position: 'absolute',
+                  right: -4,
+                  bottom: -4,
+                  width: 10,
+                  height: 10,
+                  background: '#5f9dff',
+                  borderRadius: 2,
+                  cursor: 'nwse-resize',
+                  zIndex: 2,
+                  border: '1px solid #0f1420',
+                }}
+              />
+            ) : null}
           </div>
         ))}
         {contextMenu && (
@@ -1270,7 +1542,7 @@ function SlideTemplateCanvas({
   if (special) {
     const specialScale = getSpecialTemplateScale(slide.templateId);
     return (
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', overflow: 'hidden', pointerEvents: pointerThroughCanvas ? 'none' : 'auto' }}>
         <div
           style={{
             position: 'absolute',
@@ -1291,8 +1563,8 @@ function SlideTemplateCanvas({
 
   if (slide.visualType === 'title') {
     return (
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', ...frameStyle, padding: 24 }}>
-        <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.15, color: textColor, textShadow, ...motionStyle }}>{parsed.title || slide.title}</div>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', pointerEvents: pointerThroughCanvas ? 'none' : 'auto', ...frameStyle, padding: 24 }}>
+        <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.15, color: textColor, textShadow, ...motionStyle }}>{slide.title || parsed.title}</div>
         <div style={{ fontSize: 14, marginTop: 8, color: subTextColor, textShadow, ...motionStyle }}>{(slide.content || '').split('\n').filter((x) => !x.startsWith('#')).join(' ').slice(0, 140)}</div>
       </div>
     );
@@ -1301,8 +1573,8 @@ function SlideTemplateCanvas({
   if (slide.visualType === 'table') {
     const rows = parsed.tableRows.length ? parsed.tableRows : ['| Left | Right |', '| A | B |', '| C | D |'];
     return (
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', ...frameStyle, padding: 16 }}>
-        <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 8, ...motionStyle }}>{parsed.title || slide.title}</div>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', pointerEvents: pointerThroughCanvas ? 'none' : 'auto', ...frameStyle, padding: 16 }}>
+        <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 8, ...motionStyle }}>{slide.title || parsed.title}</div>
         <div style={{ border: '1px solid rgba(255,255,255,0.45)', background: 'rgba(255,255,255,0.45)', backdropFilter: 'blur(1px)' }}>
           {rows.map((r, i) => {
             const cells = r.split('|').map((x) => x.trim()).filter(Boolean);
@@ -1323,7 +1595,7 @@ function SlideTemplateCanvas({
 
   if (slide.visualType === 'quote') {
     return (
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', alignItems: 'center', ...frameStyle, padding: 24 }}>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', alignItems: 'center', pointerEvents: pointerThroughCanvas ? 'none' : 'auto', ...frameStyle, padding: 24 }}>
         <div style={{ fontSize: 22, lineHeight: 1.35, fontStyle: 'italic', color: textColor, textShadow, ...motionStyle }}>
           {parsed.quote || (slide.content || '').replace(/^#+\s*/gm, '').slice(0, 180)}
         </div>
@@ -1333,10 +1605,10 @@ function SlideTemplateCanvas({
 
   if (slide.visualType === 'image') {
     return (
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', ...frameStyle, padding: 14, display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 12 }}>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', pointerEvents: pointerThroughCanvas ? 'none' : 'auto', ...frameStyle, padding: 14, display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 12 }}>
         <div style={{ border: mode === 'wireframe' ? '2px dashed #c6c6c6' : '1px solid #ddd', background: '#f3f3f3' }} />
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2, color: textColor, textShadow, ...motionStyle }}>{parsed.title || slide.title}</div>
+          <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2, color: textColor, textShadow, ...motionStyle }}>{slide.title || parsed.title}</div>
           <div style={{ fontSize: 13, color: subTextColor, marginTop: 8, textShadow, ...motionStyle }}>
             {(slide.content || '').replace(/^#+\s*/gm, '').slice(0, 180)}
           </div>
@@ -1346,8 +1618,8 @@ function SlideTemplateCanvas({
   }
 
   return (
-    <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', ...frameStyle, padding: 16 }}>
-      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, color: textColor, textShadow, ...motionStyle }}>{parsed.title || slide.title}</div>
+    <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', pointerEvents: pointerThroughCanvas ? 'none' : 'auto', ...frameStyle, padding: 16 }}>
+      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, color: textColor, textShadow, ...motionStyle }}>{slide.title || parsed.title}</div>
       <div style={{ fontSize: 13, color: subTextColor, lineHeight: 1.6, textShadow, ...motionStyle }}>
         {(parsed.bullets.length ? parsed.bullets : ['포인트 1', '포인트 2', '포인트 3']).map((b) => (
           <div key={b}>- {b}</div>
@@ -1946,7 +2218,7 @@ function renderSpecialTemplate(slide: Slide, textColor: string, subTextColor: st
 
 /* ---------------------------------------------------------------- */
 
-function SectionBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+export function SectionBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -2018,14 +2290,14 @@ function MetaEditor({
 
 /* ---------------------------------------------------------------- */
 
-function SlideEditor({
+export function SlideEditor({
   slide,
   index,
   onChange,
   onDelete,
   onAddLink,
   onRemoveLink,
-  onAddMedia,
+  onAddMedia: _onAddMedia,
   onRemoveMedia,
   onRemoveFile,
 }: {
@@ -2142,8 +2414,8 @@ function SlideEditor({
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLabel(); } }}
             placeholder="Add topic keyword, press Enter…"
           />
-          <button onClick={addLabel} className="gen-btn gen-btn-primary" style={{ padding: '0 18px', fontSize: 10, border: 'none' }}>
-            Add
+          <button type="button" onClick={addLabel} className="gen-btn gen-btn-primary" style={{ padding: '0 18px', fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            GO
           </button>
         </div>
         <p style={{ fontSize: 11, color: 'var(--gen-text-mute)', marginTop: 6 }}>
@@ -2239,8 +2511,8 @@ function SlideEditor({
               onChange={(e) => setNewLinkLabel(e.target.value)}
               placeholder="Label (optional)"
             />
-            <button onClick={submitLink} className="gen-btn gen-btn-primary" style={{ padding: '0 18px', fontSize: 10, border: 'none' }}>
-              Add
+            <button type="button" onClick={submitLink} className="gen-btn gen-btn-primary" style={{ padding: '0 18px', fontSize: 10, fontWeight: 600, letterSpacing: '0.06em', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              GO
             </button>
           </div>
         </div>

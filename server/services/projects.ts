@@ -67,17 +67,43 @@ export function getProject(id: string): Project | null {
 }
 
 export const DEFAULT_PRESENTATION = {
-  title: 'New Presentation',
+  title: 'MY FIRST PROJECT',
   systemPrompt: '당신은 전문적이고 카리스마 있는 프레젠테이션 발표자입니다. 청중과의 상호작용을 중시하며, 질문에 대해 전문적이면서도 이해하기 쉽게 답변합니다. 한국어로 발표합니다.',
   knowledge: '',
   slides: [
     {
       id: 1,
-      title: 'Welcome',
-      content: '# New Presentation\n\n### Start designing your deck',
-      speakerNotes: '환영 인사로 발표를 시작합니다. 짧고 명료하게 주제를 소개하세요.',
-      visualType: 'title',
-      allowQA: false,
+      title: 'Genesis GV80',
+      content: '### Premium Luxury SUV\n\nExperience the pinnacle of elegance and performance.',
+      speakerNotes: '환영 인사로 발표를 시작합니다. 제네시스 GV80의 럭셔리한 디자인과 성능에 대해 소개하겠습니다.',
+      visualType: 'image',
+      allowQA: true,
+      templateId: 'figma-1',
+      sceneMode: 'slide',
+      templateTextBlocks: [
+        { id: 'title-1', text: 'Genesis GV80', x: 6, y: 22, fontSize: 56, fontWeight: 700, maxWidth: 88, zIndex: 2 },
+        { id: 'body-1', text: 'Premium Luxury SUV', x: 6, y: 40, fontSize: 24, fontWeight: 400, maxWidth: 88, zIndex: 1 },
+      ],
+    },
+    {
+      id: 2,
+      title: 'Interior Design',
+      content: '### Beauty of White Space\n\nA spacious and refined interior crafted with the finest materials.',
+      speakerNotes: '여백의 미를 살린 인테리어 디자인을 강조합니다. 최고급 소재와 넓은 공간감을 느껴보세요.',
+      visualType: 'image',
+      allowQA: true,
+      templateId: 'figma-6',
+      sceneMode: 'slide',
+    },
+    {
+      id: 3,
+      title: 'Innovation',
+      content: '### Advanced Technology\n\nSmart features and safety systems that redefine the driving experience.',
+      speakerNotes: '최첨단 기술과 안전 시스템을 통해 드라이빙의 새로운 기준을 제시합니다.',
+      visualType: 'image',
+      allowQA: true,
+      templateId: 'figma-12',
+      sceneMode: 'slide',
     },
   ],
 };
