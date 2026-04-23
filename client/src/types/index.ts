@@ -32,8 +32,28 @@ export interface SlideBackground {
   params?: Record<string, number | boolean | string>;
 }
 
+export interface TemplateTextBlock {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  fontWeight?: number;
+  maxWidth?: number;
+  zIndex?: number;
+}
+
+export interface SlideTextStyle {
+  /** User-selected scale within a safe visual range */
+  sizeScale?: number;
+  fontFamily?: string;
+  fontWeight?: 300 | 500 | 700;
+  color?: string;
+}
+
 export interface Slide {
   id: number;
+  templateId?: string;
   title: string;
   content: string;
   speakerNotes: string;
@@ -53,6 +73,10 @@ export interface Slide {
   files?: SlideFile[];
   /** Animated background preset config */
   background?: SlideBackground;
+  /** Draggable/editable preset text blocks */
+  templateTextBlocks?: TemplateTextBlock[];
+  /** Preset text style controls from right panel */
+  textStyle?: SlideTextStyle;
   /**
    * Short topic labels used by the agent to decide when to navigate here.
    * Example: ['SDV', 'autonomous driving', 'software update']

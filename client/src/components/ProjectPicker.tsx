@@ -102,7 +102,7 @@ export function ProjectPicker() {
                 color: '#ffffff',
               }}
             >
-              Choose a project,<br />or begin a new one.
+              Create your interactive<br />presentation with AI
             </h1>
           </div>
 
@@ -144,14 +144,14 @@ export function ProjectPicker() {
                   fontWeight: 500,
                   letterSpacing: '0.18em',
                   textTransform: 'uppercase',
-                  background: 'rgba(255,255,255,0.18)',
+                  background: 'rgba(255,255,255,0.26)',
                   color: '#ffffff',
                   border: '1px solid rgba(255,255,255,0.35)',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: 8,
-                  opacity: !newName.trim() || creating ? 0.35 : 1,
+                  opacity: !newName.trim() || creating ? 0.45 : 1,
                   transition: 'opacity var(--gen-fast)',
                   backdropFilter: 'blur(8px)',
                 }}

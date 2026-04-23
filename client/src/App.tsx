@@ -147,9 +147,10 @@ function TopBar({
     <div
       className="flex items-center justify-between px-6 py-2"
       style={{
-        borderBottom: '1px solid var(--gen-border)',
-        background: 'rgba(255,255,255,0.55)',
-        backdropFilter: 'blur(6px)',
+        borderBottom: 'none',
+        background: 'rgba(6, 8, 12, 0.98)',
+        backdropFilter: 'blur(4px)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.45), inset 0 -1px 0 rgba(108,126,166,0.26)',
         transform: visible ? 'translateY(0)' : 'translateY(-110%)',
         opacity: visible ? 1 : 0,
         transition: 'transform 400ms var(--gen-ease), opacity 400ms var(--gen-ease)',
@@ -178,8 +179,8 @@ function TopBar({
             textTransform: 'uppercase',
             border: '1px solid var(--gen-border)',
             padding: '4px 8px',
-            color: 'var(--gen-text-sub)',
-            background: 'rgba(255,255,255,0.7)',
+            color: '#d6ddf0',
+            background: '#0d111a',
           }}
         >
           Home
@@ -190,11 +191,22 @@ function TopBar({
             fontWeight: 200,
             letterSpacing: '0.28em',
             textTransform: 'uppercase',
+            color: '#f5f7ff',
           }}
         >
           VOIX
         </span>
-        <span className="truncate" style={{ maxWidth: 300, fontSize: 13, color: 'var(--gen-text-mute)', fontWeight: 400 }}>
+        <span
+          className="truncate"
+          style={{
+            maxWidth: 300,
+            marginLeft: 14,
+            fontSize: 13,
+            color: '#d6ddf0',
+            fontWeight: 400,
+            textAlign: 'left',
+          }}
+        >
           {projectName || 'Untitled'}
         </span>
       </button>
@@ -209,9 +221,9 @@ function TopBar({
             fontWeight: 500,
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
-            background: 'var(--gen-white)',
-            color: 'var(--gen-text)',
-            border: '1px solid var(--gen-border-strong)',
+            background: '#1c2433',
+            color: '#f5f7ff',
+            border: '1px solid #38445d',
             cursor: 'pointer',
             transition: 'all var(--gen-fast)',
           }}

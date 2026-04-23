@@ -9,7 +9,9 @@ import {
 
 import { API_HOST } from '../api';
 
-type MediaTabId = 'image' | 'video' | 'library';
+type MediaTabId = 'preset' | 'visual' | 'asset';
+type UiThemeMode = 'morning' | 'night';
+type TextPanelTab = 'size' | 'fonts' | 'color';
 
 const BACKGROUND_PRESETS: Array<{
   kind: BackgroundPresetKind;
@@ -63,14 +65,17 @@ const BACKGROUND_PRESETS: Array<{
   },
 ];
 
-export function ContextPanel() {
+export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode }) {
   const { assets, loading, error, uploadPdf, uploadImages, uploadVideo, addFigma, addUrl, addNote, deleteAsset } = useAssets();
   const { presentation, currentSlideIndex, updateSlide } = usePresentationStore();
 
   const [isDragging, setIsDragging] = useState(false);
   const [figmaUrl, setFigmaUrl] = useState('');
   const [webUrl, setWebUrl] = useState('');
-  const [mediaTab, setMediaTab] = useState<MediaTabId>('image');
+  const [presetUrl, setPresetUrl] = useState('');
+  const [mediaTab, setMediaTab] = useState<MediaTabId>('preset');
+  const [assetSearch, setAssetSearch] = useState('');
+  const [textPanelTab, setTextPanelTab] = useState<TextPanelTab>('size');
   const [videoPrompt, setVideoPrompt] = useState('');
   const [animationTarget, setAnimationTarget] = useState('');
   const [animationPrompt, setAnimationPrompt] = useState('');
@@ -130,7 +135,19 @@ export function ContextPanel() {
     if (!slide) return;
     const preset = BACKGROUND_PRESETS.find((p) => p.kind === kind);
     if (!preset) return;
-    updateSlide(currentSlideIndex, { background: { kind, params: preset.defaults } });
+    const filteredMedia = (slide.media ?? []).filter(
+      (m) => !(
+        m.kind === 'image'
+        && (
+          (m.name || '').toLowerCase().includes('reactbits background')
+          || m.url.includes('reactbits.dev/backgrounds')
+        )
+      ),
+    );
+    updateSlide(currentSlideIndex, {
+      background: { kind, params: preset.defaults },
+      media: filteredMedia,
+    });
   };
 
   const updateBackgroundParam = (key: string, value: number) => {
@@ -168,33 +185,85 @@ export function ContextPanel() {
     setGenContents('');
   };
 
-  return (
-    <div className="flex flex-col h-full" style={{ background: 'var(--gen-bg-soft)' }}>
+  const isNight = themeMode === 'night';
+  const sizeOptions = [
+    { label: 'S', scale: 0.88 },
+    { label: 'M', scale: 1.0 },
+    { label: 'L', scale: 1.12 },
+    { label: 'XL', scale: 1.22 },
+  ];
+  const fontOptions = ['Pretendard', 'Inter', 'Noto Sans KR', 'SUIT', 'IBM Plex Sans KR'];
+  const fontWeightOptions: Array<{ label: 'Light' | 'Medium' | 'Bold'; value: 300 | 500 | 700 }> = [
+    { label: 'Light', value: 300 },
+    { label: 'Medium', value: 500 },
+    { label: 'Bold', value: 700 },
+  ];
+  const hyundaiPalette = ['#FFFFFF', '#002C5F', '#005BAC', '#4A90E2', '#00AAD2', '#0B1F3A', '#111111', '#2D2D2D', '#6B7280', '#D9DDE3'];
+  const bundledAssetFiles = [
+    'hyundai-logo-primary.svg',
+    'hyundai-logo-white.svg',
+    'icon-home-outline.svg',
+    'icon-home-filled.svg',
+    'icon-arrow-left.svg',
+    'icon-arrow-right.svg',
+    'icon-voice-wave.svg',
+    'icon-export.svg',
+    'icon-edit-pencil.svg',
+    'brand-symbol-h.svg',
+  ].filter((name) => name.toLowerCase().includes(assetSearch.trim().toLowerCase()));
 
-      {/* Content */}
-      <div className="flex-1 min-h-0">
-          <div className="p-4 space-y-4 h-full overflow-y-auto">
+  const applyTextStylePatch = (patch: { sizeScale?: number; fontFamily?: string; fontWeight?: 300 | 500 | 700; color?: string }) => {
+    if (!currentSlide) return;
+    updateSlide(currentSlideIndex, {
+      textStyle: {
+        ...(currentSlide.textStyle ?? {}),
+        ...patch,
+      },
+    });
+  };
+
+  const submitPresetUrl = async () => {
+    const url = presetUrl.trim();
+    if (!url) return;
+    if (url.includes('figma.com')) await addFigma(url);
+    else await addUrl(url);
+    setPresetUrl('');
+  };
+
+  return (
+    <div
+      className="p-4 pb-12 space-y-4 min-h-0 h-full overflow-y-auto overflow-x-hidden"
+      style={{
+        background: isNight ? 'rgba(12,16,24,0.82)' : '#f2f2f2',
+        color: isNight ? '#f5f7ff' : '#171717',
+        boxSizing: 'border-box',
+        overscrollBehavior: 'contain',
+        backdropFilter: isNight ? 'blur(12px)' : 'none',
+        ['--gen-bg-soft' as any]: isNight ? 'rgba(16,21,31,0.78)' : '#ececec',
+        ['--gen-white' as any]: isNight ? 'rgba(19,24,35,0.88)' : '#ffffff',
+        ['--gen-text' as any]: isNight ? '#f5f7ff' : '#171717',
+        ['--gen-text-sub' as any]: isNight ? '#c8d0e6' : '#4a4a4a',
+        ['--gen-text-mute' as any]: isNight ? '#94a0bf' : '#707070',
+        ['--gen-border' as any]: isNight ? 'rgba(255,255,255,0.14)' : '#d2d2d2',
+        ['--gen-black' as any]: isNight ? '#0d111a' : '#111111',
+        ['--gen-bg-gray' as any]: isNight ? 'rgba(35,46,69,0.55)' : '#e9e9e9',
+        ['--gen-btn-active-bg' as any]: isNight ? '#2f333d' : '#d9dde6',
+        ['--gen-btn-active-text' as any]: isNight ? '#f5f7ff' : '#151b26',
+        ['--gen-btn-muted-bg' as any]: isNight ? '#242730' : '#f5f6f8',
+        ['--gen-btn-muted-text' as any]: isNight ? '#f5f7ff' : '#2f3542',
+        ['--gen-btn-solid-bg' as any]: isNight ? '#2a2d36' : '#d7dce8',
+        ['--gen-btn-solid-text' as any]: isNight ? '#f5f7ff' : '#1f2633',
+      }}
+    >
             <div className="flex gap-0" style={{ border: '1px solid var(--gen-border)' }}>
-              <MiniTabBtn label="Image" active={mediaTab === 'image'} onClick={() => setMediaTab('image')} />
-              <MiniTabBtn label="Video" active={mediaTab === 'video'} onClick={() => setMediaTab('video')} />
-              <MiniTabBtn label="Library" active={mediaTab === 'library'} onClick={() => setMediaTab('library')} />
+              <MiniTabBtn label="Preset" active={mediaTab === 'preset'} onClick={() => setMediaTab('preset')} />
+              <MiniTabBtn label="Visual" active={mediaTab === 'visual'} onClick={() => setMediaTab('visual')} />
+              <MiniTabBtn label="Asset" active={mediaTab === 'asset'} onClick={() => setMediaTab('asset')} />
             </div>
 
-            {mediaTab === 'library' && (
-              <ImmersiveWebSet
-                onApplyPreset={(url) => {
-                  setWebUrl(url);
-                  setMediaTab('image');
-                }}
-                onAddPreset={async (url) => {
-                  await addUrl(url);
-                }}
-              />
-            )}
-
-            {mediaTab === 'image' && (
+            {mediaTab === 'preset' && (
               <>
-            {/* Drop zone */}
+            {/* PDF/Image/Video Drop zone */}
             <div
               onDrop={handleDrop}
               onDragOver={handleDragOver}
@@ -213,13 +282,12 @@ export function ContextPanel() {
               <div className="flex justify-center mb-3" style={{ gap: 16 }}>
                 <IconImages size={22} />
                 <IconPdf size={22} />
-                <IconVideo size={22} />
               </div>
               <div style={{ fontSize: 16, fontWeight: 300, letterSpacing: '-0.01em', marginBottom: 2 }}>
                 {isDragging ? 'Release to Upload' : 'Drag files here'}
               </div>
               <div style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', opacity: 0.65 }}>
-                Image · PDF · Video
+                Image · PDF
               </div>
               <input
                 ref={fileInputRef}
@@ -231,161 +299,13 @@ export function ContextPanel() {
               />
             </div>
 
-              </>
-            )}
-
-            {mediaTab === 'video' && (
-              <div className="space-y-3">
-                <div className="gen-label">Gen Video</div>
-                <LabeledInput
-                  label={<><IconImages size={12} /> Figma URL</>}
-                  value={figmaUrl}
-                  onChange={setFigmaUrl}
-                  placeholder="Figma URL"
-                  disabled={loading}
-                  onSubmit={() => { if (figmaUrl.trim()) { addFigma(figmaUrl.trim()); setFigmaUrl(''); } }}
-                />
-
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={() => setIsDragging(false)}
-                  onClick={() => videoInputRef.current?.click()}
-                  className="cursor-pointer"
-                  style={{
-                    padding: '22px 12px',
-                    background: isDragging ? 'var(--gen-black)' : 'var(--gen-white)',
-                    color: isDragging ? 'var(--gen-white)' : 'var(--gen-text)',
-                    border: `1px dashed ${isDragging ? 'var(--gen-black)' : 'var(--gen-border)'}`,
-                    textAlign: 'center',
-                  }}
-                >
-                  <div className="flex justify-center mb-2" style={{ gap: 10 }}>
-                    <IconVideo size={14} />
-                    <IconImages size={14} />
-                    <IconComment size={14} />
-                  </div>
-                  <div style={{ fontSize: 16, lineHeight: 1.2, marginBottom: 4 }}>Drag files here</div>
-                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.65 }}>
-                    Video / GIF
-                  </div>
-                  <input
-                    ref={videoInputRef}
-                    type="file"
-                    accept="video/*,.gif"
-                    onChange={handleVideoInput}
-                    className="hidden"
-                  />
-                </div>
-
-                <div>
-                  <div className="gen-label mb-2">Prompt</div>
-                  <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
-                    <textarea
-                      rows={2}
-                      value={videoPrompt}
-                      onChange={(e) => setVideoPrompt(e.target.value)}
-                      placeholder="Prompt"
-                      style={{
-                        flex: 1,
-                        border: 'none',
-                        padding: '10px 12px',
-                        fontSize: 12,
-                        resize: 'none',
-                        outline: 'none',
-                        background: 'var(--gen-white)',
-                      }}
-                    />
-                    <button style={{ width: 52, border: 'none', borderLeft: '1px solid var(--gen-border)', background: '#d9d9d9', fontSize: 10, cursor: 'pointer' }}>
-                      Gen Vid
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="gen-label mb-2">Gen Animation</div>
-                  <div className="flex" style={{ border: '1px solid var(--gen-border)', marginBottom: 6 }}>
-                    <input
-                      value={animationTarget}
-                      onChange={(e) => setAnimationTarget(e.target.value)}
-                      placeholder="애니메이션 넣을 요소 클릭하여 선택"
-                      style={{ flex: 1, border: 'none', padding: '10px 12px', fontSize: 11, outline: 'none', background: 'var(--gen-white)' }}
-                    />
-                    <button style={{ width: 52, border: 'none', borderLeft: '1px solid var(--gen-border)', background: '#d9d9d9', fontSize: 10, cursor: 'pointer' }}>
-                      선택
-                    </button>
-                  </div>
-                  <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
-                    <textarea
-                      rows={2}
-                      value={animationPrompt}
-                      onChange={(e) => setAnimationPrompt(e.target.value)}
-                      placeholder="애니메이션 프롬프트"
-                      style={{
-                        flex: 1,
-                        border: 'none',
-                        padding: '10px 12px',
-                        fontSize: 11,
-                        resize: 'none',
-                        outline: 'none',
-                        background: 'var(--gen-white)',
-                      }}
-                    />
-                    <button style={{ width: 52, border: 'none', borderLeft: '1px solid var(--gen-border)', background: '#d9d9d9', fontSize: 10, cursor: 'pointer' }}>
-                      Go
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
-                  <button style={{ flex: 1, height: 30, border: 'none', background: '#d9d9d9', fontSize: 10, cursor: 'pointer' }}>모션 강도</button>
-                  <button style={{ flex: 1, height: 30, border: 'none', borderLeft: '1px solid var(--gen-border)', background: '#d9d9d9', fontSize: 10, cursor: 'pointer' }}>모션 라이브러리</button>
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--gen-border)', paddingTop: 8 }}>
-                  <div className="gen-label mb-2">Preview</div>
-                  <div style={{ border: '1px solid var(--gen-border)', background: 'var(--gen-white)', padding: 6 }}>
-                    {assets.filter((a) => a.type === 'video').length > 0 ? (
-                      <div>
-                        <video
-                          src={`${API_HOST}${assets.filter((a) => a.type === 'video')[0].fileUrl}`}
-                          style={{ width: '100%', height: 95, objectFit: 'cover', background: '#000' }}
-                          muted
-                        />
-                        <div className="flex justify-end mt-1">
-                          <button style={{ height: 22, padding: '0 10px', border: '1px solid #c8c8c8', background: '#f2f2f2', fontSize: 10, cursor: 'pointer' }}>Use IT</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ height: 105, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--gen-text-mute)' }}>
-                        No video yet
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Figma URL */}
-            {mediaTab === 'image' && (
-            <>
             <LabeledInput
-              label={<><IconImages size={12} /> Figma URL</>}
-              value={figmaUrl}
-              onChange={setFigmaUrl}
-              placeholder="figma.com/design/..."
+              label={<><IconWeb size={12} /> Source URL</>}
+              value={presetUrl}
+              onChange={setPresetUrl}
+              placeholder="figma.com/... or https://..."
               disabled={loading}
-              onSubmit={() => { if (figmaUrl.trim()) { addFigma(figmaUrl.trim()); setFigmaUrl(''); } }}
-            />
-
-            {/* Web URL */}
-            <LabeledInput
-              label={<><IconWeb size={12} /> Web URL</>}
-              value={webUrl}
-              onChange={setWebUrl}
-              placeholder="https://..."
-              disabled={loading}
-              onSubmit={() => { if (webUrl.trim()) { addUrl(webUrl.trim()); setWebUrl(''); } }}
+              onSubmit={submitPresetUrl}
             />
             <div style={{ border: '1px solid var(--gen-border)', background: 'var(--gen-white)', padding: 10 }}>
               <div className="gen-label mb-2">Background Selection</div>
@@ -397,7 +317,8 @@ export function ContextPanel() {
                     style={{
                       height: 26,
                       border: '1px solid var(--gen-border)',
-                      background: currentSlide?.background?.kind === bg.kind ? '#d9d9d9' : '#f8f8f8',
+                      background: currentSlide?.background?.kind === bg.kind ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)',
+                      color: currentSlide?.background?.kind === bg.kind ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)',
                       fontSize: 10,
                       cursor: 'pointer',
                     }}
@@ -430,7 +351,7 @@ export function ContextPanel() {
               )}
             </div>
             <div style={{ border: '1px solid var(--gen-border)', background: 'var(--gen-white)' }}>
-              <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--gen-border)', fontSize: 13, color: '#555' }}>
+              <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--gen-border)', fontSize: 13, color: 'var(--gen-text-sub)' }}>
                 Gen Text
               </div>
               <div style={{ padding: 8, display: 'grid', gap: 6 }}>
@@ -443,7 +364,7 @@ export function ContextPanel() {
                   />
                   <button
                     onClick={applyGenTitle}
-                    style={{ width: 50, border: 'none', borderLeft: '1px solid var(--gen-border)', background: '#d3d3d3', fontSize: 10, cursor: 'pointer' }}
+                    style={{ width: 50, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}
                   >
                     ADD
                   </button>
@@ -457,7 +378,7 @@ export function ContextPanel() {
                   />
                   <button
                     onClick={applyGenLabels}
-                    style={{ width: 50, border: 'none', borderLeft: '1px solid var(--gen-border)', background: '#d3d3d3', fontSize: 10, cursor: 'pointer' }}
+                    style={{ width: 50, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}
                   >
                     ADD
                   </button>
@@ -471,19 +392,264 @@ export function ContextPanel() {
                   />
                   <button
                     onClick={applyGenContents}
-                    style={{ width: 50, border: 'none', borderLeft: '1px solid var(--gen-border)', background: '#d3d3d3', fontSize: 10, cursor: 'pointer' }}
+                    style={{ width: 50, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}
                   >
                     ADD
                   </button>
                 </div>
               </div>
               <div className="flex" style={{ borderTop: '1px solid var(--gen-border)' }}>
-                <button style={{ flex: 1, height: 30, border: 'none', background: '#d6d6d6', fontSize: 11, cursor: 'pointer' }}>Size</button>
-                <button style={{ flex: 1, height: 30, border: 'none', borderLeft: '1px solid var(--gen-border)', background: '#f2f2f2', fontSize: 11, cursor: 'pointer' }}>Fonts</button>
-                <button style={{ flex: 1, height: 30, border: 'none', borderLeft: '1px solid var(--gen-border)', background: '#d6d6d6', fontSize: 11, cursor: 'pointer' }}>Color</button>
+                <button
+                  onClick={() => setTextPanelTab('size')}
+                  style={{ flex: 1, height: 30, border: 'none', background: textPanelTab === 'size' ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)', color: textPanelTab === 'size' ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)', fontSize: 11, cursor: 'pointer' }}
+                >
+                  Size
+                </button>
+                <button
+                  onClick={() => setTextPanelTab('fonts')}
+                  style={{ flex: 1, height: 30, border: 'none', borderLeft: '1px solid var(--gen-border)', background: textPanelTab === 'fonts' ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)', color: textPanelTab === 'fonts' ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)', fontSize: 11, cursor: 'pointer' }}
+                >
+                  Fonts
+                </button>
+                <button
+                  onClick={() => setTextPanelTab('color')}
+                  style={{ flex: 1, height: 30, border: 'none', borderLeft: '1px solid var(--gen-border)', background: textPanelTab === 'color' ? 'var(--gen-btn-active-bg)' : 'var(--gen-btn-muted-bg)', color: textPanelTab === 'color' ? 'var(--gen-btn-active-text)' : 'var(--gen-btn-muted-text)', fontSize: 11, cursor: 'pointer' }}
+                >
+                  Color
+                </button>
+              </div>
+              <div style={{ borderTop: '1px solid var(--gen-border)', padding: 8 }}>
+                {textPanelTab === 'size' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6 }}>
+                    {sizeOptions.map((opt) => (
+                      <button
+                        key={opt.label}
+                        onClick={() => applyTextStylePatch({ sizeScale: opt.scale })}
+                        style={{
+                          height: 26,
+                          border: (currentSlide?.textStyle?.sizeScale ?? 1) === opt.scale ? '1px solid #9ca8c8' : '1px solid var(--gen-border)',
+                          background: 'var(--gen-btn-muted-bg)',
+                          color: 'var(--gen-btn-muted-text)',
+                          fontSize: 10,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {textPanelTab === 'fonts' && (
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6 }}>
+                      {fontWeightOptions.map((weight) => (
+                        <button
+                          key={weight.label}
+                          onClick={() => applyTextStylePatch({ fontWeight: weight.value })}
+                          style={{
+                            height: 26,
+                            border: currentSlide?.textStyle?.fontWeight === weight.value ? '1px solid #9ca8c8' : '1px solid var(--gen-border)',
+                            background: 'var(--gen-btn-muted-bg)',
+                            color: 'var(--gen-btn-muted-text)',
+                            fontSize: 10,
+                            fontWeight: weight.value,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {weight.label}
+                        </button>
+                      ))}
+                    </div>
+                    {fontOptions.map((font) => (
+                      <button
+                        key={font}
+                        onClick={() => applyTextStylePatch({ fontFamily: font })}
+                        style={{
+                          height: 28,
+                          border: currentSlide?.textStyle?.fontFamily === font ? '1px solid #9ca8c8' : '1px solid var(--gen-border)',
+                          background: 'var(--gen-btn-muted-bg)',
+                          color: 'var(--gen-btn-muted-text)',
+                          fontSize: 11,
+                          fontWeight: currentSlide?.textStyle?.fontWeight ?? 500,
+                          fontFamily: font,
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          padding: '0 10px',
+                        }}
+                      >
+                        {font}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {textPanelTab === 'color' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8 }}>
+                    {hyundaiPalette.map((hex) => (
+                      <button
+                        key={hex}
+                        onClick={() => applyTextStylePatch({ color: hex })}
+                        title={hex}
+                        style={{
+                          height: 24,
+                          border: currentSlide?.textStyle?.color === hex ? '2px solid #9ca8c8' : '1px solid var(--gen-border)',
+                          background: hex,
+                          cursor: 'pointer',
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             </>
+            )}
+
+            {mediaTab === 'visual' && (
+              <div className="space-y-3">
+                <div className="gen-label">Visual Upload & Motion</div>
+                <LabeledInput
+                  label={<><IconImages size={12} /> Figma URL</>}
+                  value={figmaUrl}
+                  onChange={setFigmaUrl}
+                  placeholder="Figma URL"
+                  disabled={loading}
+                  onSubmit={() => { if (figmaUrl.trim()) { addFigma(figmaUrl.trim()); setFigmaUrl(''); } }}
+                />
+
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={() => setIsDragging(false)}
+                  onClick={() => videoInputRef.current?.click()}
+                  className="cursor-pointer"
+                  style={{
+                    padding: '22px 12px',
+                    background: isDragging ? 'var(--gen-black)' : 'var(--gen-white)',
+                    color: isDragging ? 'var(--gen-white)' : 'var(--gen-text)',
+                    border: `1px dashed ${isDragging ? 'var(--gen-black)' : 'var(--gen-border)'}`,
+                    textAlign: 'center',
+                  }}
+                >
+                  <div className="flex justify-center mb-2" style={{ gap: 10 }}>
+                    <IconVideo size={14} />
+                    <IconImages size={14} />
+                  </div>
+                  <div style={{ fontSize: 16, lineHeight: 1.2, marginBottom: 4 }}>Drag files here</div>
+                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.65 }}>
+                    Video / GIF
+                  </div>
+                  <input
+                    ref={videoInputRef}
+                    type="file"
+                    accept="video/*,.gif"
+                    onChange={handleVideoInput}
+                    className="hidden"
+                  />
+                </div>
+
+                <div>
+                  <div className="gen-label mb-2">Prompt</div>
+                  <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
+                    <textarea
+                      rows={2}
+                      value={videoPrompt}
+                      onChange={(e) => setVideoPrompt(e.target.value)}
+                      placeholder="Prompt"
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        padding: '10px 12px',
+                        fontSize: 12,
+                        resize: 'none',
+                        outline: 'none',
+                        background: 'var(--gen-white)',
+                      }}
+                    />
+                    <button style={{ width: 52, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}>
+                      Gen Vid
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="gen-label mb-2">Gen Animation</div>
+                  <div className="flex" style={{ border: '1px solid var(--gen-border)', marginBottom: 6 }}>
+                    <input
+                      value={animationTarget}
+                      onChange={(e) => setAnimationTarget(e.target.value)}
+                      placeholder="애니메이션 넣을 요소 클릭하여 선택"
+                      style={{ flex: 1, border: 'none', padding: '10px 12px', fontSize: 11, outline: 'none', background: 'var(--gen-white)' }}
+                    />
+                    <button style={{ width: 52, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}>
+                      선택
+                    </button>
+                  </div>
+                  <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
+                    <textarea
+                      rows={2}
+                      value={animationPrompt}
+                      onChange={(e) => setAnimationPrompt(e.target.value)}
+                      placeholder="애니메이션 프롬프트"
+                      style={{
+                        flex: 1,
+                        border: 'none',
+                        padding: '10px 12px',
+                        fontSize: 11,
+                        resize: 'none',
+                        outline: 'none',
+                        background: 'var(--gen-white)',
+                      }}
+                    />
+                    <button style={{ width: 52, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}>
+                      Go
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex" style={{ border: '1px solid var(--gen-border)' }}>
+                  <button style={{ flex: 1, height: 30, border: 'none', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}>모션 강도</button>
+                  <button style={{ flex: 1, height: 30, border: 'none', borderLeft: '1px solid var(--gen-border)', background: 'var(--gen-btn-solid-bg)', color: 'var(--gen-btn-solid-text)', fontSize: 10, cursor: 'pointer' }}>모션 라이브러리</button>
+                </div>
+              </div>
+            )}
+
+            {mediaTab === 'asset' && (
+              <div style={{ border: '1px solid var(--gen-border)', background: 'var(--gen-white)', padding: 12 }}>
+                <div className="gen-label mb-2">Bundled Asset Files</div>
+                <div className="flex mb-2" style={{ border: '1px solid var(--gen-border)' }}>
+                  <input
+                    value={assetSearch}
+                    onChange={(e) => setAssetSearch(e.target.value)}
+                    placeholder="Search asset files..."
+                    style={{ flex: 1, border: 'none', padding: '10px 12px', fontSize: 12, outline: 'none', background: 'var(--gen-white)', color: 'var(--gen-text)' }}
+                  />
+                </div>
+                <div className="space-y-1.5" style={{ maxHeight: 320, overflowY: 'auto' }}>
+                  {bundledAssetFiles.map((name, idx) => (
+                    <div
+                      key={name}
+                      style={{
+                        border: '1px solid var(--gen-border)',
+                        background: 'var(--gen-bg-soft)',
+                        padding: '8px 10px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: 11,
+                        color: 'var(--gen-text-sub)',
+                      }}
+                    >
+                      <span>{name}</span>
+                      <span style={{ opacity: 0.6 }}>FILE {String(idx + 1).padStart(2, '0')}</span>
+                    </div>
+                  ))}
+                  {bundledAssetFiles.length === 0 && (
+                    <div style={{ padding: '10px', border: '1px solid var(--gen-border)', fontSize: 11, color: 'var(--gen-text-mute)' }}>
+                      No matching files.
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
 
             {loading && (
@@ -496,8 +662,6 @@ export function ContextPanel() {
                 {error}
               </div>
             )}
-          </div>
-      </div>
     </div>
   );
 }
@@ -509,10 +673,10 @@ function MiniTabBtn({ label, active, onClick }: { label: string; active: boolean
       style={{
         flex: 1,
         height: 24,
-        border: 'none',
-        borderLeft: label === 'Image' ? 'none' : '1px solid var(--gen-border)',
-        background: active ? 'rgba(137,137,137,0.86)' : 'var(--gen-white)',
-        color: active ? 'var(--gen-white)' : 'var(--gen-text-sub)',
+        border: active ? '1px solid #9ca8c8' : '1px solid var(--gen-border)',
+        borderLeft: label === 'Preset' ? (active ? '1px solid #9ca8c8' : '1px solid var(--gen-border)') : undefined,
+        background: active ? 'var(--gen-btn-active-bg)' : 'var(--gen-white)',
+        color: active ? 'var(--gen-btn-active-text)' : 'var(--gen-text-sub)',
         fontSize: 10,
         cursor: 'pointer',
       }}
@@ -579,7 +743,8 @@ function ImmersiveWebSet({
                   flex: 1,
                   height: 26,
                   border: '1px solid var(--gen-border)',
-                  background: '#f5f5f5',
+                  background: '#1e2638',
+                  color: '#f5f7ff',
                   fontSize: 10,
                   cursor: 'pointer',
                 }}
@@ -643,9 +808,10 @@ function LabeledInput({
           disabled={!value.trim() || disabled}
           style={{
             padding: '0 18px',
-            background: 'var(--gen-black)',
-            color: 'var(--gen-white)',
+            background: 'var(--gen-btn-solid-bg)',
+            color: 'var(--gen-btn-solid-text)',
             border: 'none',
+            borderLeft: '1px solid var(--gen-border)',
             fontSize: 10,
             letterSpacing: '0.14em',
             textTransform: 'uppercase',
