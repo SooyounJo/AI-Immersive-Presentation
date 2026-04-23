@@ -29,6 +29,8 @@ export default function App() {
 /** The actual presentation app — mounted only when a project is selected. */
 function ProjectApp({ projectName, onLeave }: { projectName?: string; onLeave: () => void }) {
   const { setPresentation, appMode, agentMode, dialogueOpen, isPlaying } = usePresentationStore();
+  const introAmbienceCtxRef = useRef<AudioContext | null>(null);
+  const introAmbienceNodesRef = useRef<{ gains: GainNode[]; oscillators: OscillatorNode[] } | null>(null);
 
   useAutoSave();
 
@@ -46,6 +48,88 @@ function ProjectApp({ projectName, onLeave }: { projectName?: string; onLeave: (
       .then((data) => setPresentation(data))
       .catch((err) => console.error('Failed to load presentation:', err));
   }, [setPresentation]);
+
+  // Intro ambience: soft pad while in present mode before playback starts.
+  useEffect(() => {
+    const shouldPlayIntroAmbience = appMode === 'present' && !isPlaying;
+
+    const stopAmbience = () => {
+      const ctx = introAmbienceCtxRef.current;
+      const nodes = introAmbienceNodesRef.current;
+      if (!ctx || !nodes) return;
+      const now = ctx.currentTime;
+      nodes.gains.forEach((g) => {
+        g.gain.cancelScheduledValues(now);
+        g.gain.setTargetAtTime(0.0001, now, 0.18);
+      });
+      window.setTimeout(() => {
+        nodes.oscillators.forEach((o) => {
+          try { o.stop(); } catch {}
+          try { o.disconnect(); } catch {}
+        });
+        nodes.gains.forEach((g) => {
+          try { g.disconnect(); } catch {}
+        });
+        introAmbienceNodesRef.current = null;
+      }, 420);
+    };
+
+    const startAmbience = async () => {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx || introAmbienceNodesRef.current) return;
+
+      if (!introAmbienceCtxRef.current) {
+        introAmbienceCtxRef.current = new AudioCtx();
+      }
+      const ctx = introAmbienceCtxRef.current;
+      if (ctx.state === 'suspended') {
+        try { await ctx.resume(); } catch { return; }
+      }
+
+      const master = ctx.createGain();
+      master.gain.value = 0.0001;
+      master.connect(ctx.destination);
+
+      const freqs = [146.83, 220.0, 293.66]; // D3/A3/D4
+      const oscillators: OscillatorNode[] = [];
+      const gains: GainNode[] = [master];
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        osc.type = idx === 0 ? 'sine' : 'triangle';
+        osc.frequency.value = freq;
+
+        const g = ctx.createGain();
+        g.gain.value = idx === 0 ? 0.12 : 0.08;
+        osc.connect(g);
+        g.connect(master);
+        oscillators.push(osc);
+        gains.push(g);
+      });
+
+      oscillators.forEach((o) => o.start());
+      introAmbienceNodesRef.current = { gains, oscillators };
+
+      const now = ctx.currentTime;
+      master.gain.cancelScheduledValues(now);
+      master.gain.setTargetAtTime(0.035, now, 0.35);
+    };
+
+    if (shouldPlayIntroAmbience) startAmbience();
+    else stopAmbience();
+
+    return () => {
+      if (!shouldPlayIntroAmbience) return;
+      stopAmbience();
+    };
+  }, [appMode, isPlaying]);
+
+  useEffect(() => () => {
+    const ctx = introAmbienceCtxRef.current;
+    if (!ctx) return;
+    try { ctx.close(); } catch {}
+    introAmbienceCtxRef.current = null;
+    introAmbienceNodesRef.current = null;
+  }, []);
 
   // Auto-hide top nav during playback — show on mouse movement
   const topVisible = useTopNavVisibility(isPlaying);
@@ -143,6 +227,7 @@ function TopBar({
   showToggles: boolean;
   onLeave: () => void;
 }) {
+  const projectTitleOffset = showToggles ? 14 : 132;
   return (
     <div
       className="flex items-center justify-between px-6 py-2"
@@ -200,7 +285,7 @@ function TopBar({
           className="truncate"
           style={{
             maxWidth: 300,
-            marginLeft: 14,
+            marginLeft: projectTitleOffset,
             fontSize: 13,
             color: '#d6ddf0',
             fontWeight: 400,

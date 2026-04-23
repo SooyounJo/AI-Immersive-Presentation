@@ -25,7 +25,14 @@ export interface SlideFile {
   size?: number;
 }
 
-export type BackgroundPresetKind = 'darkVeil' | 'grainient' | 'particles' | 'iridescence';
+export type BackgroundPresetKind =
+  | 'darkVeil'
+  | 'grainient'
+  | 'particles'
+  | 'iridescence'
+  | 'solidBlack'
+  | 'solidWhite'
+  | 'customImage';
 
 export interface SlideBackground {
   kind: BackgroundPresetKind;
@@ -49,6 +56,9 @@ export interface SlideTextStyle {
   fontFamily?: string;
   fontWeight?: 300 | 500 | 700;
   color?: string;
+  motionPreset?: string;
+  motionIntensity?: number;
+  motionSpeed?: number;
 }
 
 export interface Slide {

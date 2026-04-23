@@ -6,7 +6,7 @@ import { PRESET_CARDS, STYLE_PRESETS, type PresetCard } from '../data/slidePrese
 import { ContextPanel } from './ContextPanel';
 import { InsightsPanel } from './InsightsPanel';
 import { SlideBackgroundLayer } from './backgrounds/OglBackgrounds';
-import { projectApi } from '../api';
+import { API_ROOT, projectApi } from '../api';
 import { useProjectsStore } from '../stores/projectsStore';
 import {
   IconArrowLeft, IconArrowRight, IconPlus, IconClose, IconTrash,
@@ -46,6 +46,7 @@ export function DesignView() {
   const [selectedStylePresetId, setSelectedStylePresetId] = useState('clean-light');
   const [voicePreviewUrls, setVoicePreviewUrls] = useState<Record<number, string>>({});
   const [playingVoiceSlideId, setPlayingVoiceSlideId] = useState<number | null>(null);
+  const [selectedVoice, setSelectedVoice] = useState<'male' | 'female'>('male');
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleSave = async () => {
@@ -94,12 +95,13 @@ export function DesignView() {
   const handleGenerateVoice = async () => {
     if (!slide) return;
     const text = (slide.speakerNotes || '').trim() || slide.title || 'Voice preview';
+    const ttsVoice = selectedVoice === 'female' ? 'nova' : 'onyx';
     setSaveStatus('saving');
     try {
-      const response = await fetch(`${projectApi()}/tts/synthesize`, {
+      const response = await fetch(`${API_ROOT}/tts/synthesize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, voice: ttsVoice }),
       });
       if (!response.ok) throw new Error('TTS synthesize failed');
       const blob = await response.blob();
@@ -176,22 +178,24 @@ export function DesignView() {
   const totalSlides = presentation.slides.length;
 
   const isNight = themeMode === 'night';
-  const uiBorder = isNight ? '1px solid rgba(255,255,255,0.14)' : '1px solid #cfcfcf';
-  const uiSurface = isNight ? 'rgba(10,11,14,0.86)' : '#efefef';
-  const uiSurfaceStrong = isNight ? 'rgba(23,24,28,0.92)' : '#f8f8f8';
+  const uiBorder = isNight ? '1px solid rgba(255,255,255,0.12)' : '1px solid #cfcfcf';
+  const uiSurface = isNight ? 'rgba(12,12,14,0.9)' : '#efefef';
+  const uiSurfaceStrong = isNight ? 'rgba(28,28,31,0.94)' : '#f8f8f8';
   const uiPanelShadow = isNight ? '0 10px 28px rgba(0,0,0,0.35)' : 'none';
 
   return (
     <div
       className="flex h-full min-h-0"
       style={{
-        background: isNight ? 'radial-gradient(circle at 30% 0%, #111726 0%, #080a10 55%, #05060a 100%)' : '#d9d9d9',
+        background: isNight ? 'linear-gradient(180deg, #07080b 0%, #090a0d 100%)' : '#d9d9d9',
         color: isNight ? '#f5f7ff' : '#171717',
       }}
     >
       <div
         className="w-[236px] shrink-0 min-h-0 flex flex-col overflow-hidden"
         style={{
+          height: 'calc(100vh - 52px)',
+          maxHeight: 'calc(100vh - 52px)',
           position: 'relative',
           background: uiSurface,
           borderRight: uiBorder,
@@ -199,7 +203,7 @@ export function DesignView() {
           boxShadow: uiPanelShadow,
         }}
       >
-        <div className="p-2 min-h-0 flex-1 overflow-y-auto" style={{ overscrollBehavior: 'contain', paddingBottom: 78 }}>
+        <div className="p-2 min-h-0 flex-1 overflow-y-auto" style={{ overscrollBehavior: 'contain', paddingBottom: 78, WebkitOverflowScrolling: 'touch' }}>
           {presentation.slides.map((s, i) => (
             <div
               key={s.id}
@@ -213,14 +217,14 @@ export function DesignView() {
                 cursor: 'pointer',
               }}
             >
-              <div style={{ fontSize: 12, marginBottom: 6, color: isNight ? '#aab2c8' : '#666', paddingLeft: 2 }}>{i + 1}</div>
+              <div style={{ fontSize: 12, marginBottom: 6, color: isNight ? '#a7a9af' : '#666', paddingLeft: 2 }}>{i + 1}</div>
               <div
                 style={{
                   width: '100%',
                   aspectRatio: '16 / 9',
                   border: i === currentSlideIndex ? '2px solid #5f9dff' : '1px solid #303646',
                   borderRadius: 6,
-                  background: isNight ? 'linear-gradient(180deg, rgba(13,16,24,0.84) 0%, rgba(8,10,16,0.88) 100%)' : '#ffffff',
+                  background: isNight ? 'linear-gradient(180deg, rgba(17,18,22,0.92) 0%, rgba(12,13,16,0.95) 100%)' : '#ffffff',
                   padding: 8,
                   overflow: 'hidden',
                   display: 'flex',
@@ -228,7 +232,7 @@ export function DesignView() {
                   justifyContent: 'flex-start',
                 }}
               >
-                <div className="gen-label" style={{ color: isNight ? '#c9d2ea' : '#666' }}>{s.sceneMode === 'scene' ? 'SCENE' : 'SLIDE'}</div>
+                <div className="gen-label" style={{ color: isNight ? '#c2c4ca' : '#666' }}>{s.sceneMode === 'scene' ? 'SCENE' : 'SLIDE'}</div>
                 <div style={{ fontSize: 13, marginTop: 4, fontWeight: 600, color: isNight ? '#f5f7ff' : '#171717' }}>{s.title}</div>
                 <div style={{ fontSize: 9, color: isNight ? '#9aa3bc' : '#666', marginTop: 3 }} className="truncate">
                   {(s.content || '').replace(/[#>*`-]/g, '').slice(0, 40)}
@@ -347,7 +351,7 @@ export function DesignView() {
                 cursor: 'pointer',
               }}
             >
-              Preview Mode
+              Agentic Mode
             </button>
             <button
               onClick={() => setCanvasMode('slides')}
@@ -361,10 +365,10 @@ export function DesignView() {
                 cursor: 'pointer',
               }}
             >
-              Slides Mode
+              Slide Mode
             </button>
           </div>
-          <div className="gen-label" style={{ color: '#f5f7ff' }}>{`< ${String(currentSlideIndex + 1).padStart(2, '0')}/${String(totalSlides).padStart(2, '0')} >`}</div>
+          <div className="gen-label" style={{ color: '#f5f7ff' }}>{`${String(currentSlideIndex + 1).padStart(2, '0')}/${String(totalSlides).padStart(2, '0')}`}</div>
         </div>
 
         <div className="p-2 min-h-0 overflow-hidden">
@@ -385,26 +389,32 @@ export function DesignView() {
                   isVoicePlaying={playingVoiceSlideId === slide.id}
                   onPlayGeneratedVoice={() => playGeneratedVoice(slide.id)}
                 />
-                <div style={{ marginTop: 0, border: isNight ? '1px solid #1b1f2a' : '1px solid #c7c7c7', borderTop: 'none', background: isNight ? '#000000' : '#d7d7d7' }}>
-                  <div style={{ height: 2, background: isNight ? '#1a1f2b' : '#a6a6a6', position: 'relative' }}>
-                    <div style={{ width: '44%', height: 2, background: '#7a8fbe' }} />
-                    <span style={{ position: 'absolute', left: '44%', top: -4, width: 8, height: 8, borderRadius: '50%', background: '#7a8fbe' }} />
-                  </div>
-                </div>
                 <div style={{ background: isNight ? '#000000' : '#d8d8d8', border: isNight ? '1px solid #1b1f2a' : '1px solid #c7c7c7', borderTop: 'none', padding: '12px 10px', display: 'grid', gridTemplateColumns: '170px 1fr 74px', gap: 10 }}>
                   <div>
                     <div className="gen-label" style={{ marginBottom: 6, color: '#d7def3' }}>보이스 선택</div>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-                      {['Voice1', 'Voice2', 'Voice3'].map((v) => (
-                        <div key={v} style={{ textAlign: 'center' }}>
-                          <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#2a3040', border: '1px solid #3a4256', margin: '0 auto' }} />
-                          <div style={{ fontSize: 9, marginTop: 2, color: '#c8d0e6' }}>{v}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      {['속도 조정', '높낮이', '끝음 처리'].map((x) => (
-                        <button key={x} style={{ border: '1px solid #3a4256', background: '#252b39', color: '#f1f4ff', padding: '3px 6px', fontSize: 9, cursor: 'pointer' }}>{x}</button>
+                      {[
+                        { id: 'male' as const, label: '남성보이스' },
+                        { id: 'female' as const, label: '여성보이스' },
+                      ].map((v) => (
+                        <button
+                          key={v.id}
+                          onClick={() => setSelectedVoice(v.id)}
+                          style={{ textAlign: 'center', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+                        >
+                          <div
+                            style={{
+                              width: 30,
+                              height: 30,
+                              borderRadius: '50%',
+                              background: selectedVoice === v.id ? '#3b4f7a' : '#2a3040',
+                              border: selectedVoice === v.id ? '1px solid #5f9dff' : '1px solid #3a4256',
+                              margin: '0 auto',
+                              boxShadow: selectedVoice === v.id ? '0 0 0 1px rgba(95,157,255,0.35) inset' : 'none',
+                            }}
+                          />
+                          <div style={{ fontSize: 10, marginTop: 3, color: selectedVoice === v.id ? '#e7efff' : '#c8d0e6' }}>{v.label}</div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -429,7 +439,7 @@ export function DesignView() {
                       fontSize: 10,
                       lineHeight: 1.2,
                       cursor: 'pointer',
-                      minHeight: 68,
+                      minHeight: 56,
                       padding: '0 4px',
                     }}
                   >
@@ -443,9 +453,11 @@ export function DesignView() {
       </div>
 
       <div
-        className="shrink-0 min-h-0 h-full overflow-hidden flex flex-col"
+        className="shrink-0 min-h-0 overflow-hidden flex flex-col"
         style={{
           width: 'clamp(300px, 30vw, 380px)',
+          height: 'calc(100vh - 52px)',
+          maxHeight: 'calc(100vh - 52px)',
           borderLeft: uiBorder,
           background: uiSurface,
           color: isNight ? '#f5f7ff' : '#171717',
@@ -453,7 +465,9 @@ export function DesignView() {
           boxShadow: uiPanelShadow,
         }}
       >
-        <ContextPanel themeMode={themeMode} />
+        <div className="flex-1 min-h-0 overflow-y-auto" style={{ overscrollBehavior: 'contain' }}>
+          <ContextPanel themeMode={themeMode} />
+        </div>
       </div>
 
       {presetOpen && (
@@ -499,9 +513,10 @@ function getSpecialTemplateScale(templateId?: string) {
 
   // Global normalization for preset typography so template titles
   // don't look oversized compared to the base slide typography.
-  if (compactHeavyText.has(templateId)) return 0.58;
-  if (mediumText.has(templateId)) return 0.64;
-  return 0.64;
+  // Keep enough safe-area so bottom rows don't get clipped.
+  if (compactHeavyText.has(templateId)) return 0.88;
+  if (mediumText.has(templateId)) return 0.92;
+  return 0.92;
 }
 
 function scaleNumericStyle(value: unknown, factor: number) {
@@ -513,11 +528,48 @@ function scaleNumericStyle(value: unknown, factor: number) {
   return value;
 }
 
+function getMotionAnimation(
+  preset?: string,
+  intensity = 1,
+  speed = 1,
+): CSSProperties {
+  if (!preset || preset === 'none') return {};
+  const safeIntensity = Math.max(0.1, Math.min(2.4, intensity || 1));
+  const safeSpeed = Math.max(0.25, Math.min(2.5, speed || 1));
+  return {
+    animationName: `gen-motion-${preset}`,
+    animationDuration: `${(2 / safeSpeed).toFixed(2)}s`,
+    animationTimingFunction: 'ease-in-out',
+    animationIterationCount: 'infinite',
+    animationFillMode: 'both',
+    ['--motion-intensity' as any]: safeIntensity,
+  };
+}
+
+function createEditableTemplateBlocks(
+  templateId: string,
+  title: string,
+  body: string,
+): TemplateTextBlock[] {
+  if (templateId === 'figma-6') {
+    return [
+      { id: 'title-1', text: title || '', x: 18, y: 45, fontSize: 38, fontWeight: 700, maxWidth: 34, zIndex: 2 },
+      { id: 'body-1', text: body || '', x: 52, y: 41, fontSize: 14, fontWeight: 400, maxWidth: 34, zIndex: 1 },
+    ];
+  }
+  // Generic fallback for other figma presets: keep values from preset only.
+  return [
+    { id: 'title-1', text: title || '', x: 11, y: 14, fontSize: 30, fontWeight: 700, maxWidth: 78, zIndex: 2 },
+    { id: 'body-1', text: body || '', x: 11, y: 25, fontSize: 14, fontWeight: 400, maxWidth: 78, zIndex: 1 },
+  ];
+}
+
 function normalizePresetTree(
   node: ReactNode,
   textScale: number,
   spacingScale: number,
   typography?: { fontFamily?: string; fontWeight?: 300 | 500 | 700; color?: string },
+  motion?: CSSProperties,
 ): ReactNode {
   if (!isValidElement(node)) return node;
   const element = node as any;
@@ -543,6 +595,9 @@ function normalizePresetTree(
   if (typography?.color && nextStyle.color !== undefined) {
     nextStyle.color = typography.color;
   }
+  if (motion?.animationName && (nextStyle.fontSize !== undefined || nextStyle.lineHeight !== undefined)) {
+    Object.assign(nextStyle, motion);
+  }
   spaceKeys.forEach((k) => {
     if (nextStyle[k] !== undefined) nextStyle[k] = scaleNumericStyle(nextStyle[k], spacingScale) as any;
   });
@@ -550,7 +605,7 @@ function normalizePresetTree(
   const children = element.props?.children;
   const normalizedChildren = children === undefined
     ? children
-    : Children.map(children, (c) => normalizePresetTree(c, textScale, spacingScale, typography));
+    : Children.map(children, (c) => normalizePresetTree(c, textScale, spacingScale, typography, motion));
 
   return cloneElement(element, { style: nextStyle }, normalizedChildren);
 }
@@ -696,7 +751,8 @@ function PresetPickerModal({
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: 'rgba(0,0,0,0.35)',
+        background: 'rgba(5,8,14,0.62)',
+        backdropFilter: 'blur(10px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -710,10 +766,12 @@ function PresetPickerModal({
           width: 'min(1060px, 96vw)',
           maxHeight: '90vh',
           overflow: 'auto',
-          background: '#121720',
-          borderRadius: 14,
+          background: 'linear-gradient(140deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04))',
+          borderRadius: 2,
           padding: 12,
-          border: '1px solid #2f3646',
+          border: '1px solid rgba(255,255,255,0.24)',
+          backdropFilter: 'blur(14px)',
+          boxShadow: '0 16px 36px rgba(0,0,0,0.28)',
         }}
       >
         <TemplateSection title="Recents" presets={recents} onSelect={onSelect} />
@@ -735,7 +793,7 @@ function TemplateSection({
 }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <div className="gen-label" style={{ padding: '6px 2px', color: '#d7def3' }}>{title}</div>
+      <div className="gen-label" style={{ padding: '6px 2px', color: 'rgba(255,255,255,0.72)' }}>{title}</div>
       <div
         style={{
           display: 'grid',
@@ -750,17 +808,20 @@ function TemplateSection({
             style={{
               minHeight: 110,
               textAlign: 'left',
-              border: '1px solid #2f3646',
-              borderRadius: 8,
-              background: preset.featured ? '#334766' : '#1a202b',
-              color: '#f5f7ff',
+              border: preset.featured ? '1px solid rgba(95,157,255,0.55)' : '1px solid rgba(255,255,255,0.2)',
+              borderRadius: 2,
+              background: preset.featured
+                ? 'linear-gradient(140deg, rgba(95,157,255,0.2), rgba(95,157,255,0.08))'
+                : 'linear-gradient(140deg, rgba(255,255,255,0.1), rgba(255,255,255,0.03))',
+              color: '#ffffff',
               padding: 12,
               cursor: 'pointer',
+              backdropFilter: 'blur(10px)',
             }}
           >
             <TemplatePreview preset={preset} />
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>{preset.title}</div>
-            <div style={{ fontSize: 10, opacity: 0.78, color: '#c8d0e6' }}>{preset.subtitle}</div>
+            <div style={{ fontSize: 10, opacity: 0.82, color: 'rgba(255,255,255,0.7)' }}>{preset.subtitle}</div>
           </button>
         ))}
       </div>
@@ -798,23 +859,38 @@ function SlideStagePanel({
         || m.url.includes('reactbits.dev/backgrounds')
       ),
   );
-  const previewImageMedia = (slide.media ?? []).find(
-    (m) => m.kind === 'image' && m !== legacyBackgroundMedia,
+  const previewVisualMedia = (slide.media ?? []).find(
+    (m) => (m.kind === 'image' || m.kind === 'video') && m !== legacyBackgroundMedia,
   );
   const hasBackground = Boolean(slide.background?.kind);
-  const isDarkBg = hasBackground && slide.background?.kind !== 'grainient';
+  const backgroundKind = slide.background?.kind;
+  const hasProceduralBackground = backgroundKind === 'darkVeil'
+    || backgroundKind === 'grainient'
+    || backgroundKind === 'particles'
+    || backgroundKind === 'iridescence';
+  const solidBackgroundColor = backgroundKind === 'solidBlack'
+    ? '#000000'
+    : backgroundKind === 'solidWhite'
+      ? '#ffffff'
+      : undefined;
+  const customBackgroundImage = backgroundKind === 'customImage'
+    ? String(slide.background?.params?.imageUrl ?? '')
+    : '';
+  const isDarkBg = backgroundKind === 'darkVeil'
+    || backgroundKind === 'particles'
+    || backgroundKind === 'iridescence'
+    || backgroundKind === 'solidBlack'
+    || backgroundKind === 'customImage';
   const textColor = isDarkBg ? '#f5f7ff' : '#111111';
   const subTextColor = isDarkBg ? 'rgba(245,247,255,0.88)' : '#2f2f2f';
   const textShadow = isDarkBg ? '0 1px 2px rgba(0,0,0,0.45)' : '0 1px 2px rgba(255,255,255,0.4)';
   return (
-    <div style={{ border: '1px solid #dcdcdc', background: '#fff', padding: 10 }}>
+    <div style={{ border: '1px solid #2b2f39', background: '#1f2633', padding: 10 }}>
       <div
         style={{
           width: '100%',
           height: 'clamp(340px, 62vh, 620px)',
-          border: '1px solid #d7d7d7',
-          background: '#ececec',
-          padding: 8,
+          background: '#252b36',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -824,32 +900,46 @@ function SlideStagePanel({
       >
         <div
           style={{
-            height: 'calc(100% - 24px)',
-            width: 'auto',
+            width: 'min(100%, calc(clamp(340px, 62vh, 620px) * 16 / 9))',
+            height: 'auto',
             aspectRatio: '16 / 9',
-            maxWidth: '100%',
-            background: '#f7f7f7',
-            border: '1px solid #d1d1d1',
-            display: 'flex',
-            flexDirection: 'column',
-            padding: 6,
+            background: solidBackgroundColor ?? (hasBackground ? 'transparent' : '#ffffff'),
+            border: '1px solid #e4e4e4',
             overflow: 'hidden',
-            marginTop: 18,
+            position: 'relative',
           }}
         >
-          <div style={{ flex: 1, width: '100%', background: hasBackground ? 'transparent' : '#ffffff', border: '1px solid #e4e4e4', padding: 10, overflow: 'hidden', position: 'relative' }}>
-            {slide.background?.kind ? (
-              <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-                <SlideBackgroundLayer kind={slide.background.kind} params={slide.background.params} />
-              </div>
-            ) : null}
-            {canvasMode === 'preview' && previewImageMedia ? (
+          {hasProceduralBackground ? (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+              <SlideBackgroundLayer kind={slide.background?.kind} params={slide.background?.params} />
+            </div>
+          ) : null}
+          {customBackgroundImage ? (
+            <img
+              src={customBackgroundImage}
+              alt=""
+              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
+            />
+          ) : null}
+          {canvasMode === 'preview' && previewVisualMedia ? (
+            previewVisualMedia.kind === 'video' ? (
+              <video
+                src={previewVisualMedia.url}
+                style={{ width: '100%', maxHeight: 240, objectFit: 'contain', marginBottom: 12, border: '1px solid #ececec', position: 'relative', zIndex: 1 }}
+                autoPlay
+                muted
+                loop
+                playsInline
+              />
+            ) : (
               <img
-                src={previewImageMedia.url}
-                alt={previewImageMedia.name || ''}
+                src={previewVisualMedia.url}
+                alt={previewVisualMedia.name || ''}
                 style={{ width: '100%', maxHeight: 240, objectFit: 'contain', marginBottom: 12, border: '1px solid #ececec', position: 'relative', zIndex: 1 }}
               />
-            ) : null}
+            )
+          ) : null}
+          <div style={{ position: 'absolute', inset: 0, padding: 10, overflow: 'hidden' }}>
             <SlideTemplateCanvas
               slide={slide}
               parsed={parsed}
@@ -859,29 +949,29 @@ function SlideStagePanel({
               textShadow={textShadow}
               onUpdateSlide={onUpdateSlide}
             />
-            {hasGeneratedVoice && (
-              <button
-                onClick={onPlayGeneratedVoice}
-                title="Play generated voice"
-                style={{
-                  position: 'absolute',
-                  left: 12,
-                  bottom: 12,
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  border: '1px solid rgba(95,157,255,0.9)',
-                  background: 'rgba(13,20,35,0.75)',
-                  color: '#f5f7ff',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                  zIndex: 3,
-                }}
-              >
-                {isVoicePlaying ? '⏸' : '🔊'}
-              </button>
-            )}
           </div>
+          {hasGeneratedVoice && (
+            <button
+              onClick={onPlayGeneratedVoice}
+              title="Play generated voice"
+              style={{
+                position: 'absolute',
+                left: 12,
+                bottom: 12,
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                border: '1px solid rgba(95,157,255,0.9)',
+                background: 'rgba(13,20,35,0.75)',
+                color: '#f5f7ff',
+                fontSize: 14,
+                cursor: 'pointer',
+                zIndex: 3,
+              }}
+            >
+              {isVoicePlaying ? '⏸' : '🔊'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -905,12 +995,17 @@ function SlideTemplateCanvas({
   textShadow: string;
   onUpdateSlide: (patch: Partial<Slide>) => void;
 }) {
-  const editableTemplateId = slide.templateId === 'figma-6' ? 'figma-6' : null;
-  const textSizeScale = slide.textStyle?.sizeScale ?? 1;
+  const editableTemplateId = slide.templateId?.startsWith('figma-') ? slide.templateId : null;
+  const textSizeScale = slide.textStyle?.sizeScale ?? 0.76;
   const textFontFamily = slide.textStyle?.fontFamily;
   const textFontWeight = slide.textStyle?.fontWeight;
   const styledTextColor = slide.textStyle?.color ?? textColor;
   const styledSubTextColor = slide.textStyle?.color ?? subTextColor;
+  const motionStyle = getMotionAnimation(
+    slide.textStyle?.motionPreset,
+    slide.textStyle?.motionIntensity ?? 1,
+    slide.textStyle?.motionSpeed ?? 1,
+  );
   const editableHostRef = useRef<HTMLDivElement>(null);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [clipboardBlock, setClipboardBlock] = useState<TemplateTextBlock | null>(null);
@@ -918,20 +1013,28 @@ function SlideTemplateCanvas({
   const [contextMenu, setContextMenu] = useState<{ id: string; x: number; y: number } | null>(null);
 
   useEffect(() => {
-    if (editableTemplateId !== 'figma-6') return;
-    if ((slide.templateTextBlocks ?? []).length > 0) return;
+    if (!editableTemplateId) return;
     const body = slide.content.replace(/^#\s[^\n]+/, '').trim();
-    onUpdateSlide({
-      templateTextBlocks: [
-        { id: 'title-1', text: slide.title || 'Highlight', x: 18, y: 45, fontSize: 62, fontWeight: 700, maxWidth: 34, zIndex: 2 },
-        { id: 'body-1', text: body, x: 52, y: 41, fontSize: 22, fontWeight: 400, maxWidth: 34, zIndex: 1 },
-      ],
+    const blocks = slide.templateTextBlocks ?? [];
+    if (!blocks.length) {
+      const seeded = createEditableTemplateBlocks(editableTemplateId, slide.title, body);
+      if (!seeded.length) return;
+      onUpdateSlide({ templateTextBlocks: seeded });
+      return;
+    }
+    // Migrate old placeholder values to actual preset values.
+    const migrated = blocks.map((b) => {
+      if (b.id === 'title-1' && (b.text === 'Title' || b.text === 'Highlight')) return { ...b, text: slide.title || '' };
+      if (b.id === 'body-1' && b.text === 'Description') return { ...b, text: body || '' };
+      return b;
     });
+    const changed = migrated.some((b, i) => b.text !== blocks[i]?.text);
+    if (changed) onUpdateSlide({ templateTextBlocks: migrated });
   }, [editableTemplateId, slide.content, slide.templateTextBlocks, slide.title, onUpdateSlide]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (editableTemplateId !== 'figma-6') return;
+      if (!editableTemplateId) return;
       const target = e.target as HTMLElement | null;
       if (target && target.closest('[contenteditable="true"]')) return;
       const blocks = slide.templateTextBlocks ?? [];
@@ -1003,7 +1106,23 @@ function SlideTemplateCanvas({
 
   const onPointerUp = () => setDragInfo(null);
 
-  if (editableTemplateId === 'figma-6' && (slide.templateTextBlocks ?? []).length > 0) {
+  if (editableTemplateId && (slide.templateTextBlocks ?? []).length > 0) {
+    const editableSpecialRaw = renderSpecialTemplate(
+      { ...slide, title: '', content: '' },
+      styledTextColor,
+      styledSubTextColor,
+      textShadow,
+    );
+    const editableSpecial = editableSpecialRaw
+      ? normalizePresetTree(
+        editableSpecialRaw,
+        0.56 * textSizeScale,
+        0.84,
+        { fontFamily: textFontFamily, fontWeight: textFontWeight, color: slide.textStyle?.color },
+        motionStyle,
+      )
+      : null;
+    const editableSpecialScale = getSpecialTemplateScale(slide.templateId);
     return (
       <div
         ref={editableHostRef}
@@ -1012,6 +1131,20 @@ function SlideTemplateCanvas({
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
       >
+        {editableSpecial && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 1, overflow: 'hidden', pointerEvents: 'none' }}>
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                transform: `scale(${editableSpecialScale})`,
+                transformOrigin: 'center center',
+              }}
+            >
+              {editableSpecial}
+            </div>
+          </div>
+        )}
         {[...(slide.templateTextBlocks ?? [])]
           .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0))
           .map((block) => (
@@ -1076,6 +1209,7 @@ function SlideTemplateCanvas({
                 cursor: 'text',
                 transform: `scale(${textSizeScale})`,
                 transformOrigin: 'left top',
+                ...motionStyle,
               }}
             >
               {block.text}
@@ -1124,7 +1258,13 @@ function SlideTemplateCanvas({
 
   const specialRaw = renderSpecialTemplate(slide, styledTextColor, styledSubTextColor, textShadow);
   const special = specialRaw
-    ? normalizePresetTree(specialRaw, 0.78 * textSizeScale, 0.9, { fontFamily: textFontFamily, fontWeight: textFontWeight, color: slide.textStyle?.color })
+    ? normalizePresetTree(
+      specialRaw,
+      0.68 * textSizeScale,
+      0.84,
+      { fontFamily: textFontFamily, fontWeight: textFontWeight, color: slide.textStyle?.color },
+      motionStyle,
+    )
     : specialRaw;
 
   if (special) {
@@ -1152,8 +1292,8 @@ function SlideTemplateCanvas({
   if (slide.visualType === 'title') {
     return (
       <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', ...frameStyle, padding: 24 }}>
-        <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.15, color: textColor, textShadow }}>{parsed.title || slide.title}</div>
-        <div style={{ fontSize: 14, marginTop: 8, color: subTextColor, textShadow }}>{(slide.content || '').split('\n').filter((x) => !x.startsWith('#')).join(' ').slice(0, 140)}</div>
+        <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.15, color: textColor, textShadow, ...motionStyle }}>{parsed.title || slide.title}</div>
+        <div style={{ fontSize: 14, marginTop: 8, color: subTextColor, textShadow, ...motionStyle }}>{(slide.content || '').split('\n').filter((x) => !x.startsWith('#')).join(' ').slice(0, 140)}</div>
       </div>
     );
   }
@@ -1162,14 +1302,14 @@ function SlideTemplateCanvas({
     const rows = parsed.tableRows.length ? parsed.tableRows : ['| Left | Right |', '| A | B |', '| C | D |'];
     return (
       <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', ...frameStyle, padding: 16 }}>
-        <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 8 }}>{parsed.title || slide.title}</div>
+        <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 8, ...motionStyle }}>{parsed.title || slide.title}</div>
         <div style={{ border: '1px solid rgba(255,255,255,0.45)', background: 'rgba(255,255,255,0.45)', backdropFilter: 'blur(1px)' }}>
           {rows.map((r, i) => {
             const cells = r.split('|').map((x) => x.trim()).filter(Boolean);
             return (
               <div key={`${r}-${i}`} style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(2, cells.length)}, minmax(0, 1fr))`, borderTop: i === 0 ? 'none' : '1px solid #eee' }}>
                 {cells.map((c, ci) => (
-                  <div key={`${c}-${ci}`} style={{ padding: '7px 9px', borderLeft: ci === 0 ? 'none' : '1px solid rgba(0,0,0,0.08)', fontSize: 12 }}>
+                  <div key={`${c}-${ci}`} style={{ padding: '7px 9px', borderLeft: ci === 0 ? 'none' : '1px solid rgba(0,0,0,0.08)', fontSize: 12, ...motionStyle }}>
                     {c || `Cell ${ci + 1}`}
                   </div>
                 ))}
@@ -1184,7 +1324,7 @@ function SlideTemplateCanvas({
   if (slide.visualType === 'quote') {
     return (
       <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', display: 'flex', alignItems: 'center', ...frameStyle, padding: 24 }}>
-        <div style={{ fontSize: 22, lineHeight: 1.35, fontStyle: 'italic', color: textColor, textShadow }}>
+        <div style={{ fontSize: 22, lineHeight: 1.35, fontStyle: 'italic', color: textColor, textShadow, ...motionStyle }}>
           {parsed.quote || (slide.content || '').replace(/^#+\s*/gm, '').slice(0, 180)}
         </div>
       </div>
@@ -1196,8 +1336,8 @@ function SlideTemplateCanvas({
       <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', ...frameStyle, padding: 14, display: 'grid', gridTemplateColumns: '1.35fr 1fr', gap: 12 }}>
         <div style={{ border: mode === 'wireframe' ? '2px dashed #c6c6c6' : '1px solid #ddd', background: '#f3f3f3' }} />
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2, color: textColor, textShadow }}>{parsed.title || slide.title}</div>
-          <div style={{ fontSize: 13, color: subTextColor, marginTop: 8, textShadow }}>
+          <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.2, color: textColor, textShadow, ...motionStyle }}>{parsed.title || slide.title}</div>
+          <div style={{ fontSize: 13, color: subTextColor, marginTop: 8, textShadow, ...motionStyle }}>
             {(slide.content || '').replace(/^#+\s*/gm, '').slice(0, 180)}
           </div>
         </div>
@@ -1207,14 +1347,14 @@ function SlideTemplateCanvas({
 
   return (
     <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%', ...frameStyle, padding: 16 }}>
-      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, color: textColor, textShadow }}>{parsed.title || slide.title}</div>
-      <div style={{ fontSize: 13, color: subTextColor, lineHeight: 1.6, textShadow }}>
+      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 10, color: textColor, textShadow, ...motionStyle }}>{parsed.title || slide.title}</div>
+      <div style={{ fontSize: 13, color: subTextColor, lineHeight: 1.6, textShadow, ...motionStyle }}>
         {(parsed.bullets.length ? parsed.bullets : ['포인트 1', '포인트 2', '포인트 3']).map((b) => (
           <div key={b}>- {b}</div>
         ))}
       </div>
       {mode === 'render' && !parsed.bullets.length && (
-        <div className="gen-prose" style={{ marginTop: 12, color: subTextColor }}>
+        <div className="gen-prose" style={{ marginTop: 12, color: subTextColor, ...motionStyle }}>
           <ReactMarkdown>{slide.content || ''}</ReactMarkdown>
         </div>
       )}

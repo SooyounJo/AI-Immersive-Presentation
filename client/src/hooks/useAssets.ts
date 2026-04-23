@@ -24,7 +24,7 @@ export function useAssets() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const uploadPdf = useCallback(async (file: File) => {
+  const uploadPdf = useCallback(async (file: File): Promise<Asset | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -32,15 +32,18 @@ export function useAssets() {
       form.append('file', file);
       const res = await fetch(`${assetsBase()}/pdf`, { method: 'POST', body: form });
       if (!res.ok) throw new Error(await res.text());
+      const created = await res.json();
       await refresh();
+      return created as Asset;
     } catch (e: any) {
       setError(e.message);
+      return null;
     } finally {
       setLoading(false);
     }
   }, [refresh]);
 
-  const uploadVideo = useCallback(async (file: File) => {
+  const uploadVideo = useCallback(async (file: File): Promise<Asset | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -48,15 +51,18 @@ export function useAssets() {
       form.append('file', file);
       const res = await fetch(`${assetsBase()}/video`, { method: 'POST', body: form });
       if (!res.ok) throw new Error(await res.text());
+      const created = await res.json();
       await refresh();
+      return created as Asset;
     } catch (e: any) {
       setError(e.message);
+      return null;
     } finally {
       setLoading(false);
     }
   }, [refresh]);
 
-  const uploadImages = useCallback(async (files: File[]) => {
+  const uploadImages = useCallback(async (files: File[]): Promise<Asset[]> => {
     setLoading(true);
     setError(null);
     try {
@@ -64,15 +70,18 @@ export function useAssets() {
       files.forEach(f => form.append('files', f));
       const res = await fetch(`${assetsBase()}/images`, { method: 'POST', body: form });
       if (!res.ok) throw new Error(await res.text());
+      const created = await res.json();
       await refresh();
+      return created as Asset[];
     } catch (e: any) {
       setError(e.message);
+      return [];
     } finally {
       setLoading(false);
     }
   }, [refresh]);
 
-  const addFigma = useCallback(async (url: string, note?: string) => {
+  const addFigma = useCallback(async (url: string, note?: string): Promise<Asset | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -82,15 +91,18 @@ export function useAssets() {
         body: JSON.stringify({ url, note }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
+      const created = await res.json();
       await refresh();
+      return created as Asset;
     } catch (e: any) {
       setError(e.message);
+      return null;
     } finally {
       setLoading(false);
     }
   }, [refresh]);
 
-  const addUrl = useCallback(async (url: string) => {
+  const addUrl = useCallback(async (url: string): Promise<Asset | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -100,9 +112,12 @@ export function useAssets() {
         body: JSON.stringify({ url }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
+      const created = await res.json();
       await refresh();
+      return created as Asset;
     } catch (e: any) {
       setError(e.message);
+      return null;
     } finally {
       setLoading(false);
     }

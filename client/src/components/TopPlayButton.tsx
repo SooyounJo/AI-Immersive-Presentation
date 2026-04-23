@@ -8,12 +8,22 @@ import { IconPlay, IconPause } from './icons';
  * so the three form a harmonious cluster.
  */
 export function TopPlayButton() {
-  const { isPlaying } = usePresentationStore();
+  const { isPlaying, appMode, setAppMode } = usePresentationStore();
   const { toggle } = usePlayback();
+
+  const handleClick = () => {
+    // In design mode, Start should first open present view
+    // so users can page through their authored slides.
+    if (appMode !== 'present') {
+      setAppMode('present');
+      return;
+    }
+    toggle();
+  };
 
   return (
     <button
-      onClick={toggle}
+      onClick={handleClick}
       title={isPlaying ? 'Pause presentation' : 'Start presentation'}
       style={{
         padding: '9px 16px',
