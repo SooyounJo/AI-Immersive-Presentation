@@ -269,19 +269,12 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
     });
   };
 
-  const applyMyImageBackground = () => {
+  const applyCustomVideoBackground = () => {
     if (!currentSlide) return;
-    const latestImageAsset = [...assets]
-      .reverse()
-      .find((a) => a.type === 'image' && Boolean(a.fileUrl));
-    if (!latestImageAsset?.fileUrl) return;
-    const imageUrl = latestImageAsset.fileUrl.startsWith('http')
-      ? latestImageAsset.fileUrl
-      : `${API_HOST}${latestImageAsset.fileUrl}`;
     updateSlide(currentSlideIndex, {
       background: {
-        kind: 'customImage',
-        params: { imageUrl },
+        kind: 'customVideo',
+        params: { url: '/vid.mp4' },
       },
     });
   };
@@ -549,11 +542,11 @@ export function ContextPanel({ themeMode = 'night' }: { themeMode?: UiThemeMode 
                   onClick={() => applySolidBackground('white')}
                 />
                 <BackgroundPresetTile
-                  kind="customImage"
-                  label="My Image"
+                  kind="customVideo"
+                  label="GALAXY"
                   lightUi={!isNight}
-                  selected={currentSlide?.background?.kind === 'customImage'}
-                  onClick={applyMyImageBackground}
+                  selected={currentSlide?.background?.kind === 'customVideo'}
+                  onClick={applyCustomVideoBackground}
                 />
               </div>
               {currentPreset && (

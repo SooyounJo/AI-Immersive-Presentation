@@ -5,7 +5,7 @@ function swatchStyle(kind: BackgroundPresetKind): CSSProperties {
   switch (kind) {
     case 'iridescence':
       return {
-        background: 'conic-gradient(from 210deg at 38% 42%, #6366f1 0deg, #c084fc 95deg, #22d3ee 195deg, #fbcfe8 285deg, #818cf8 360deg)',
+        background: 'conic-gradient(from 210deg at 38% 42%, #1e1b4b 0deg, #3b0764 95deg, #083344 195deg, #172554 285deg, #2e1065 360deg)',
       };
     case 'particles': {
       const dots = [
@@ -23,7 +23,7 @@ function swatchStyle(kind: BackgroundPresetKind): CSSProperties {
     }
     case 'grainient':
       return {
-        background: 'linear-gradient(122deg, #f9a8d4 0%, #c084fc 35%, #6366f1 72%, #312e81 100%)',
+        background: 'linear-gradient(122deg, #2e1065 0%, #1e1b4b 35%, #0f172a 72%, #020617 100%)',
       };
     case 'darkVeil':
       return {
@@ -34,8 +34,9 @@ function swatchStyle(kind: BackgroundPresetKind): CSSProperties {
     case 'solidWhite':
       return { background: '#ffffff' };
     case 'customImage':
+    case 'customVideo':
       return {
-        background: 'linear-gradient(145deg, #e4e8ef 0%, #cdd5e0 55%, #b8c2d4 100%)',
+        background: 'linear-gradient(145deg, #1e1e2f 0%, #2a2a40 55%, #3d3d5c 100%)',
       };
     default:
       return { background: '#2a2a2a' };
@@ -43,7 +44,7 @@ function swatchStyle(kind: BackgroundPresetKind): CSSProperties {
 }
 
 function useLightLabel(kind: BackgroundPresetKind): boolean {
-  return kind === 'solidWhite' || kind === 'customImage';
+  return kind === 'solidWhite' || kind === 'customImage' || kind === 'customVideo';
 }
 
 function labelStyleFor(kind: BackgroundPresetKind, lightUi: boolean): CSSProperties {

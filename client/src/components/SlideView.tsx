@@ -1,15 +1,6 @@
 import ReactMarkdown from 'react-markdown';
 import { usePresentationStore } from '../stores/presentationStore';
 import { IconLink, IconPdf, IconPlay } from './icons';
-function IconMenu(props: any) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <line x1="3" y1="7" x2="21" y2="7" />
-      <line x1="3" y1="12" x2="21" y2="12" />
-      <line x1="3" y1="17" x2="21" y2="17" />
-    </svg>
-  );
-}
 import { SlideBackgroundLayer } from './backgrounds/OglBackgrounds';
 import { SlideAnnotationsOverlay } from './SlideAnnotationsOverlay';
 
@@ -17,19 +8,19 @@ import { SlideAnnotationsOverlay } from './SlideAnnotationsOverlay';
  * Multi-layer composition order (back to front):
  *   1. Background (white / ambient gradient behind)
  *   2. Procedural background layer (darkVeil, grainient, etc.)
+ *   2.5. Custom Video background
  *   3. Full-bleed media layer (image or video) — only when visualType === 'image'
  *   4. Readability scrim — subtle gradient so text remains legible on media
  *   5. Content layer — template text blocks OR slide number, media grid, markdown body
  *   6. Chip layer — links, files, video on-demand
  *   7. Signature / indicator overlays
+ *   8. Annotations overlay
  */
 export function SlideView({
-  onToggleChrome,
   onReplayVoice,
   hasReplayVoice = false,
   isReplayVoicePlaying = false,
 }: {
-  onToggleChrome?: () => void;
   onReplayVoice?: () => void;
   hasReplayVoice?: boolean;
   isReplayVoicePlaying?: boolean;
@@ -51,6 +42,8 @@ export function SlideView({
     || backgroundKind === 'grainient'
     || backgroundKind === 'particles'
     || backgroundKind === 'iridescence';
+  
+  const hasCustomVideoBackground = backgroundKind === 'customVideo';
 
   const firstMedia = slide.media?.[0];
   const isFullBleed = slide.visualType === 'image' && (firstMedia?.kind === 'image' || firstMedia?.kind === 'video');
@@ -60,7 +53,9 @@ export function SlideView({
   const isDarkBg = backgroundKind === 'darkVeil'
     || backgroundKind === 'particles'
     || backgroundKind === 'iridescence'
+    || backgroundKind === 'grainient'
     || backgroundKind === 'solidBlack'
+    || backgroundKind === 'customVideo'
     || (backgroundKind === 'customImage');
   const textColor = isDarkBg ? '#f5f7ff' : '#111111';
   const textShadow = isDarkBg ? '0 1px 2px rgba(0,0,0,0.45)' : '0 1px 2px rgba(255,255,255,0.4)';
@@ -69,27 +64,6 @@ export function SlideView({
 
   return (
     <div className="relative h-full w-full overflow-hidden" style={{ background: isDarkBg ? '#000' : '#fff' }}>
-      {/* Hamburger menu (Image 1 style) */}
-      <button
-        type="button"
-        onClick={() => onToggleChrome?.()}
-        aria-label="Toggle presentation chrome"
-        style={{
-          position: 'absolute',
-          top: 18,
-          left: 18,
-          zIndex: 10,
-          color: textColor,
-          opacity: 0.4,
-          background: 'transparent',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer',
-        }}
-      >
-        <IconMenu size={22} />
-      </button>
-
       {hasReplayVoice && (
         <button
           type="button"
@@ -122,6 +96,22 @@ export function SlideView({
       {hasProceduralBackground && (
         <div className="absolute inset-0 z-0">
           <SlideBackgroundLayer kind={slide.background?.kind} params={slide.background?.params} />
+        </div>
+      )}
+
+      {/* LAYER 2.5 — Custom Video background */}
+      {hasCustomVideoBackground && (
+        <div className="absolute inset-0 z-0">
+          <video
+            src={slide.background?.params?.url as string || '/vid.mp4'}
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          {/* Optional dark overlay to ensure text remains readable */}
+          <div className="absolute inset-0 bg-black/40 pointer-events-none" />
         </div>
       )}
 

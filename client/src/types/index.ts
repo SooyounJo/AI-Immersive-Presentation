@@ -34,7 +34,8 @@ export type BackgroundPresetKind =
   | 'iridescence'
   | 'solidBlack'
   | 'solidWhite'
-  | 'customImage';
+  | 'customImage'
+  | 'customVideo';
 
 export interface SlideBackground {
   kind: BackgroundPresetKind;

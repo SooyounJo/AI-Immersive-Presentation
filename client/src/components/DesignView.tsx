@@ -605,6 +605,8 @@ function SlideStagePanel({
     || backgroundKind === 'grainient'
     || backgroundKind === 'particles'
     || backgroundKind === 'iridescence';
+  
+  const hasCustomVideoBackground = backgroundKind === 'customVideo';
   const solidBackgroundColor = backgroundKind === 'solidBlack'
     ? '#000000'
     : backgroundKind === 'solidWhite'
@@ -616,7 +618,9 @@ function SlideStagePanel({
   const isDarkBg = backgroundKind === 'darkVeil'
     || backgroundKind === 'particles'
     || backgroundKind === 'iridescence'
+    || backgroundKind === 'grainient'
     || backgroundKind === 'solidBlack'
+    || backgroundKind === 'customVideo'
     || backgroundKind === 'customImage';
   const textColor = isDarkBg ? '#f5f7ff' : '#111111';
   const subTextColor = isDarkBg ? 'rgba(245,247,255,0.88)' : '#2f2f2f';
@@ -656,6 +660,19 @@ function SlideStagePanel({
           {hasProceduralBackground ? (
             <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
               <SlideBackgroundLayer kind={slide.background?.kind} params={slide.background?.params} />
+            </div>
+          ) : null}
+          {hasCustomVideoBackground ? (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+              <video
+                src={slide.background?.params?.url as string || '/vid.mp4'}
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', pointerEvents: 'none' }} />
             </div>
           ) : null}
           {customBackgroundImage ? (

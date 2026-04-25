@@ -115,14 +115,15 @@ void main(){
   uv*=rot(uTime*0.06*uTimeSpeed);
   uv.x += sin(uv.y*uWarpFrequency + uTime*uWarpSpeed)*0.12;
   uv.y += sin(uv.x*(uWarpFrequency*1.5)+uTime*uWarpSpeed)*0.08;
-  vec3 col=mix(vec3(1.0,0.62,0.98),vec3(0.32,0.15,1.0),0.5+0.5*uv.x);
-  col=mix(col,vec3(0.70,0.59,0.81),0.5+0.5*uv.y);
+  vec3 col=mix(vec3(0.08,0.05,0.25),vec3(0.02,0.03,0.12),0.5+0.5*uv.x);
+  col=mix(col,vec3(0.05,0.08,0.18),0.5+0.5*uv.y);
   float n=fract(sin(dot(gl_FragCoord.xy+uTime,vec2(12.9898,78.233)))*43758.5453);
   col+=(n-0.5)*uGrainAmount;
   float l=dot(col,vec3(0.2126,0.7152,0.0722));
   col=mix(vec3(l),col,uSaturation);
   col*=uTint;
   col=(col-0.5)*uContrast+0.5;
+  col=pow(clamp(col,0.0,1.0), vec3(1.4)) * 1.4;
   fragColor=vec4(clamp(col,0.0,1.0),1.0);
 }`,
       uniforms: {
@@ -234,7 +235,7 @@ void main(){
 }
 
 export function IridescenceBg({
-  speed = 1, amplitude = 0.1, colorR = 0.5, colorG = 0.6, colorB = 0.8,
+  speed = 1, amplitude = 0.1, colorR = 0.15, colorG = 0.25, colorB = 0.45,
 }: Record<string, number>) {
   const ref = useRef<HTMLDivElement>(null);
   const mouseRef = useRef({ x: 0.5, y: 0.5 });
@@ -262,8 +263,9 @@ void main(){
   float d=-uTime*0.5*uSpeed; float a=0.0;
   for(float i=0.0;i<8.0;i++){a+=cos(i-d-a*uv.x); d+=sin(uv.y*i+a);}
   d+=uTime*0.5*uSpeed;
-  vec3 col=vec3(cos(uv*vec2(d,a))*0.6+0.4,cos(a+d)*0.5+0.5);
-  col=cos(col*cos(vec3(d,a,2.5))*0.5+0.5)*uColor;
+  vec3 col=vec3(cos(uv*vec2(d,a))*0.6+0.0,cos(a+d)*0.6+0.0);
+  col=cos(col*cos(vec3(d,a,2.5))*0.6+0.0)*uColor;
+  col=pow(clamp(col, 0.0, 1.0), vec3(1.4)) * 1.5;
   gl_FragColor=vec4(col,1.0);
 }`,
       uniforms: {

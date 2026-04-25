@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useProjectsStore, type Project } from '../stores/projectsStore';
 import { usePresentationStore } from '../stores/presentationStore';
 import { IconPlus, IconTrash, IconArrowRight } from './icons';
-import { Particles } from './Particles';
 
 export function ProjectPicker() {
   const { projects, create, enter, rename, remove, init } = useProjectsStore();
@@ -45,17 +44,29 @@ export function ProjectPicker() {
       className="h-screen w-screen flex flex-col overflow-hidden relative"
       style={{ background: '#050509', color: '#ffffff' }}
     >
-      {/* Cosmic starfield background */}
-      <Particles
-        particleColors={['#ffffff']}
-        particleCount={360}
-        particleSpread={10}
-        speed={0.045}
-        particleBaseSize={100}
-        moveParticlesOnHover
-        alphaParticles={false}
-        disableRotation={false}
-        pixelRatio={1}
+      {/* Video background */}
+      <video
+        src="/vid.mp4"
+        autoPlay
+        loop
+        muted
+        playsInline
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          zIndex: 0,
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(5, 5, 9, 0.05)', // Extremely light overlay
+          zIndex: 0,
+        }}
       />
 
       {/* Top bar — VOIX brand mark */}

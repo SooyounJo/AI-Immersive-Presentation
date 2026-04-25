@@ -175,7 +175,7 @@ function ProjectApp({ onLeave }: { onLeave: () => void }) {
   }, []);
 
   // Presentation chrome is controlled directly by the hamburger toggle.
-  const { visible: chromeVisible, toggle: toggleChrome } = usePresentationChromeVisibility(appMode);
+  const { visible: chromeVisible } = usePresentationChromeVisibility(appMode);
   usePresentationNavigationControls(appMode, stopSpeaking);
 
   const currentSlide = presentation?.slides[currentSlideIndex];
@@ -231,7 +231,6 @@ function ProjectApp({ onLeave }: { onLeave: () => void }) {
           <>
             <div className="flex-1 relative min-h-0">
               <SlideView
-                onToggleChrome={toggleChrome}
                 onReplayVoice={replaySlideVoice}
                 hasReplayVoice={Boolean(currentSlideVoiceText)}
                 isReplayVoicePlaying={isVoicePlaying}
@@ -266,15 +265,36 @@ function ProjectApp({ onLeave }: { onLeave: () => void }) {
 
 function usePresentationChromeVisibility(appMode: AppMode) {
   const [visible, setVisible] = useState(true);
-  const toggle = () => setVisible((prev) => !prev);
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (appMode !== 'present') {
       setVisible(true);
+      return;
     }
+
+    const resetTimer = () => {
+      setVisible(true);
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+      }
+      timerRef.current = window.setTimeout(() => {
+        setVisible(false);
+      }, 5000);
+    };
+
+    window.addEventListener('mousemove', resetTimer);
+    resetTimer();
+
+    return () => {
+      window.removeEventListener('mousemove', resetTimer);
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
   }, [appMode]);
 
-  return { visible, toggle };
+  return { visible };
 }
 
 function usePresentationNavigationControls(appMode: AppMode, stopSpeaking: () => void) {
