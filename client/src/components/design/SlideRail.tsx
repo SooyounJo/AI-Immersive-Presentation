@@ -218,11 +218,17 @@ export function SlideRail({
           isNight={isNight}
           onClose={() => setShowTemplatePicker(false)}
           onSelect={(preset) => {
-            const presetBody = (preset.content || '').replace(/^#\s[^\n]+/, '').trim();
+            const normalizedLines = (preset.content || '')
+              .split('\n')
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .map((line) => line.replace(/^#+\s*/, '').replace(/^[-*]\s*/, '').replace(/\|/g, ' '))
+              .filter((line) => line && line.toLowerCase() !== preset.title.toLowerCase());
+            const compactBody = (normalizedLines.join(' ').replace(/\s+/g, ' ').trim() || preset.subtitle || '').slice(0, 140);
             addSlide({
               templateId: preset.id,
               title: preset.title,
-              content: `# ${preset.title}${presetBody ? `\n\n${presetBody}` : ''}`,
+              content: `# ${preset.title}${compactBody ? `\n\n${compactBody}` : ''}`,
               speakerNotes: preset.speakerNotes,
               visualType: preset.visualType,
               background: slide?.background,
