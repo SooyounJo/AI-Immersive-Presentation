@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Asset } from '../types';
+import type { Asset } from '@shared/types';
 import { projectApi } from '../api';
 import { useProjectsStore } from '../stores/projectsStore';
 
@@ -17,12 +17,15 @@ export function useAssets() {
       const res = await fetch(assetsBase());
       const data = await res.json();
       setAssets(data);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
     }
   }, [currentProjectId]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refresh();
+  }, [refresh]);
 
   const uploadPdf = useCallback(async (file: File): Promise<Asset | null> => {
     setLoading(true);
@@ -35,8 +38,8 @@ export function useAssets() {
       const created = await res.json();
       await refresh();
       return created as Asset;
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
       return null;
     } finally {
       setLoading(false);
@@ -54,8 +57,8 @@ export function useAssets() {
       const created = await res.json();
       await refresh();
       return created as Asset;
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
       return null;
     } finally {
       setLoading(false);
@@ -73,8 +76,8 @@ export function useAssets() {
       const created = await res.json();
       await refresh();
       return created as Asset[];
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
       return [];
     } finally {
       setLoading(false);
@@ -94,8 +97,8 @@ export function useAssets() {
       const created = await res.json();
       await refresh();
       return created as Asset;
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
       return null;
     } finally {
       setLoading(false);
@@ -115,8 +118,8 @@ export function useAssets() {
       const created = await res.json();
       await refresh();
       return created as Asset;
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
       return null;
     } finally {
       setLoading(false);
@@ -134,8 +137,8 @@ export function useAssets() {
       });
       if (!res.ok) throw new Error((await res.json()).error);
       await refresh();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
@@ -145,8 +148,8 @@ export function useAssets() {
     try {
       await fetch(`${assetsBase()}/${id}`, { method: 'DELETE' });
       await refresh();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
     }
   }, [refresh]);
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Slide, SlideLink, SlideMedia } from '../../types';
+import type { Slide, SlideLink } from '@shared/types';
 import { IconTrash, IconLink, IconPdf, IconPlus, IconClose } from '../icons';
 
 export function SectionBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
@@ -30,7 +30,7 @@ export function MetaEditor({
   onUpdate,
 }: {
   presentation: { title: string; systemPrompt: string; knowledge: string };
-  onUpdate: (patch: any) => void;
+  onUpdate: (patch: Partial<{ title: string; systemPrompt: string; knowledge: string }>) => void;
 }) {
   return (
     <div className="max-w-2xl space-y-8">
@@ -79,7 +79,6 @@ export function SlideEditor({
   onDelete,
   onAddLink,
   onRemoveLink,
-  onAddMedia: _onAddMedia,
   onRemoveMedia,
   onRemoveFile,
 }: {
@@ -89,7 +88,6 @@ export function SlideEditor({
   onDelete: () => void;
   onAddLink: (link: SlideLink) => void;
   onRemoveLink: (url: string) => void;
-  onAddMedia: (m: SlideMedia) => void;
   onRemoveMedia: (url: string) => void;
   onRemoveFile: (url: string) => void;
 }) {

@@ -40,8 +40,8 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
       const list = await fetch(API).then((r) => r.json()) as Project[];
       // Always start from landing page on app launch.
       set({ projects: list, currentProjectId: null, loading: false, error: null });
-    } catch (e: any) {
-      set({ error: e.message, loading: false });
+    } catch (e: unknown) {
+      set({ error: e instanceof Error ? e.message : 'Unknown error', loading: false });
     }
   },
 

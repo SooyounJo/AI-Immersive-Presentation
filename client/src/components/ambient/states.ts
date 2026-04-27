@@ -142,7 +142,7 @@ export const STATE_MAP: Record<GradientState, GradientVisual> = {
  * Bridge from domain agent state → gradient state.
  * Keep this mapping here so the rest of the app only deals with its own vocab.
  */
-import type { AgentMode } from '../../types';
+import type { AgentMode } from '@shared/types';
 
 export function mapAgentMode(mode: AgentMode): GradientState {
   switch (mode) {

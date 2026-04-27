@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import type { BackgroundPresetKind } from '../types';
+import type { BackgroundPresetKind } from '@shared/types';
 
 function swatchStyle(kind: BackgroundPresetKind): CSSProperties {
   switch (kind) {
@@ -43,12 +43,12 @@ function swatchStyle(kind: BackgroundPresetKind): CSSProperties {
   }
 }
 
-function useLightLabel(kind: BackgroundPresetKind): boolean {
+function isLightLabel(kind: BackgroundPresetKind): boolean {
   return kind === 'solidWhite' || kind === 'customImage' || kind === 'customVideo';
 }
 
 function labelStyleFor(kind: BackgroundPresetKind, lightUi: boolean): CSSProperties {
-  const lightLabel = useLightLabel(kind);
+  const lightLabel = isLightLabel(kind);
   if (lightUi) {
     return {
       color: '#0f172a',

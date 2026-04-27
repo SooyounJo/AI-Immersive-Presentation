@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Presentation, Slide, SlideMedia, SlideLink, SlideFile, ChatMessage, AgentMode, SlideAnnotation } from '../types';
+import type { Presentation, Slide, SlideMedia, SlideLink, SlideFile, ChatMessage, AgentMode, SlideAnnotation } from '@shared/types';
 
 export type AppMode = 'present' | 'design';
 export type UiThemeMode = 'morning' | 'night';

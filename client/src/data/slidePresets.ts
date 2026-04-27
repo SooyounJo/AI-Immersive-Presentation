@@ -1,4 +1,4 @@
-import type { Slide } from '../types';
+import type { Slide } from '@shared/types';
 
 export type PresetCard = {
   id: string;

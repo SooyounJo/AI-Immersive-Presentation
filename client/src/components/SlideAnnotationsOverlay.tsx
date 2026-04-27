@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { usePresentationStore } from '../stores/presentationStore';
-import type { SlideAnnotation } from '../types';
+import type { SlideAnnotation } from '@shared/types';
 
 function generateId() {
   return Math.random().toString(36).substr(2, 9);

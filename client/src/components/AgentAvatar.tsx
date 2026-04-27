@@ -39,7 +39,7 @@ export function AgentAvatar() {
     ctx.scale(dpr, dpr);
 
     let raf = 0;
-    let t0 = performance.now();
+    const t0 = performance.now();
 
     const draw = () => {
       const now = performance.now();

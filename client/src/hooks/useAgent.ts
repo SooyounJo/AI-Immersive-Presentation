@@ -76,7 +76,9 @@ export function useAgent() {
               const parsed = JSON.parse(data);
               fullText += parsed.content;
               store.appendStreamingText(parsed.content);
-            } catch {}
+            } catch {
+              // Ignore invalid JSON chunks
+            }
           }
         }
       }
@@ -156,7 +158,9 @@ export function useAgent() {
               const parsed = JSON.parse(data);
               fullText += parsed.content;
               store.appendStreamingText(parsed.content);
-            } catch {}
+            } catch {
+              // Ignore invalid JSON chunks
+            }
           }
         }
       }

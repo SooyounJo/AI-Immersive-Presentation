@@ -32,15 +32,16 @@ export function useQaLog(pollMs = 4000) {
       const res = await fetch(base());
       setEntries(await res.json());
       setError(null);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
   }, [currentProjectId]);
 
   useEffect(() => {
-    refresh();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refresh();
     if (pollMs > 0) {
       const t = setInterval(refresh, pollMs);
       return () => clearInterval(t);
@@ -55,8 +56,8 @@ export function useQaLog(pollMs = 4000) {
         body: JSON.stringify(body),
       });
       await refresh();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Unknown error');
     }
   }, [refresh]);
 

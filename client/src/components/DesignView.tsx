@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Reorder } from 'motion/react';
+import { useEffect, useRef, useState } from 'react';
 import { usePresentationStore } from '../stores/presentationStore';
-import type { Slide, SlideMedia } from '../types';
+import type { Slide } from '@shared/types';
 import { ContextPanel } from './ContextPanel';
 import { InsightsPanel } from './InsightsPanel';
-import { SlideBackgroundLayer } from './backgrounds/OglBackgrounds';
 import { API_ROOT } from '../api';
-import { SlideTemplateCanvas, slideRailPreviewSubtitle, parseContentLines } from './design/TemplateRenderer';
 import { MetaEditor } from './design/DesignEditors';
+import { SlideRail } from './design/SlideRail';
+import { MainCanvas } from './design/MainCanvas';
 
 export function DesignView() {
   const {
@@ -67,6 +66,7 @@ export function DesignView() {
   };
 
   const handleGenerateVoice = async () => {
+    const slide = presentation?.slides[currentSlideIndex];
     if (!slide) return;
     const text = (slide.speakerNotes || '').trim() || slide.title || 'Voice preview';
     const ttsVoice = selectedVoice === 'female' ? 'nova' : 'onyx';
@@ -132,159 +132,21 @@ export function DesignView() {
         color: isNight ? '#f5f7ff' : '#171717',
       }}
     >
-      <div
-        className="w-[272px] shrink-0 min-h-0 flex flex-col overflow-hidden"
-        style={{
-          height: 'calc(100vh - 52px)',
-          maxHeight: 'calc(100vh - 52px)',
-          position: 'relative',
-          background: uiSurface,
-          borderRight: uiBorder,
-          backdropFilter: isNight ? 'blur(10px)' : 'none',
-          boxShadow: uiPanelShadow,
-        }}
-      >
-        <div className="p-2 min-h-0 flex-1 overflow-y-auto no-scrollbar" style={{ overscrollBehavior: 'contain', paddingBottom: 78, WebkitOverflowScrolling: 'touch' }}>
-          <Reorder.Group axis="y" values={presentation.slides} onReorder={handleReorder}>
-            {presentation.slides.map((s, i) => (
-              <Reorder.Item
-                key={s.id}
-                value={s}
-                onClick={() => goToSlide(i)}
-                style={{
-                  padding: 0,
-                  border: 'none',
-                  borderRadius: 0,
-                  marginBottom: 8,
-                  background: 'transparent',
-                  cursor: 'grab',
-                  listStyle: 'none',
-                }}
-              >
-                <div style={{ fontSize: 12, marginBottom: 6, color: isNight ? '#a7a9af' : '#666', paddingLeft: 2 }}>{i + 1}</div>
-                <div
-                  style={{
-                    width: '100%',
-                    aspectRatio: '16 / 9',
-                    border: i === currentSlideIndex
-                      ? '1px solid #5f9dff'
-                      : (isNight ? '1px solid #303646' : '1px solid #c5cad4'),
-                    borderRadius: 6,
-                    background: isNight ? 'linear-gradient(180deg, rgba(17,18,22,0.92) 0%, rgba(12,13,16,0.95) 100%)' : '#ffffff',
-                    padding: 8,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-start',
-                  }}
-                >
-                  <div className="gen-label" style={{ color: isNight ? '#c2c4ca' : '#666' }}>{s.sceneMode === 'scene' ? 'SCENE' : 'SLIDE'}</div>
-                  <div style={{ fontSize: 13, marginTop: 4, fontWeight: 600, color: isNight ? '#f5f7ff' : '#171717' }}>{s.title}</div>
-                  <div
-                    style={{
-                      fontSize: 9,
-                      lineHeight: 1.35,
-                      color: isNight ? '#b8c4d8' : '#4b5563',
-                      marginTop: 3,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical' as const,
-                      overflow: 'hidden',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {slideRailPreviewSubtitle(s)}
-                  </div>
-                </div>
-                <div className="flex items-start justify-end gap-2" style={{ marginTop: 4, paddingRight: 2 }}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (presentation.slides.length > 1) deleteSlide(i);
-                    }}
-                    title="Delete slide"
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      fontSize: 18,
-                      lineHeight: 1,
-                      color: isNight ? '#cfd6e8' : '#444',
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
-                  >
-                    -
-                  </button>
-                </div>
-              </Reorder.Item>
-            ))}
-          </Reorder.Group>
-          <button
-            onClick={() => addSlide({
-              background: slide?.background,
-              textStyle: slide?.textStyle,
-              sceneMode: slide?.sceneMode ?? 'slide',
-            })}
-            style={{
-              width: '100%',
-              height: 34,
-                border: uiBorder,
-                background: uiSurfaceStrong,
-              fontSize: 22,
-              lineHeight: 1,
-              cursor: 'pointer',
-              color: isNight ? '#f5f7ff' : '#222',
-              marginTop: 2,
-              backdropFilter: isNight ? 'blur(6px)' : 'none',
-            }}
-            aria-label="Add slide"
-            title="Add slide"
-          >
-            +
-          </button>
-        </div>
-        <div style={{ height: 10, borderTop: uiBorder, flexShrink: 0 }} />
-        <div style={{ position: 'absolute', left: 10, bottom: 28, display: 'flex', justifyContent: 'flex-start', zIndex: 4 }}>
-          <button
-            onClick={() => setThemeMode(themeMode === 'night' ? 'morning' : 'night')}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              border: uiBorder,
-              background: isNight ? 'rgba(34,35,40,0.95)' : '#f0f0f0',
-              color: isNight ? '#f5f7ff' : '#111',
-              fontSize: 18,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            title={isNight ? '밤 모드' : '아침 모드'}
-            aria-label={isNight ? 'Switch to morning mode' : 'Switch to night mode'}
-          >
-            {isNight ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M14.5 3.5C11 4.4 8.5 7.6 8.5 11.3C8.5 15.8 12.2 19.5 16.7 19.5C18.2 19.5 19.7 19.1 20.9 18.3C19.6 20.8 16.9 22.5 13.8 22.5C9.1 22.5 5.2 18.6 5.2 13.9C5.2 9.8 8 6.3 11.8 5.4C12.8 5.1 13.8 5.1 14.5 5.2V3.5Z" fill="currentColor" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="12" cy="12" r="4.2" fill="currentColor" />
-                <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-                  <path d="M12 2.8V5.2" />
-                  <path d="M12 18.8V21.2" />
-                  <path d="M2.8 12H5.2" />
-                  <path d="M18.8 12H21.2" />
-                  <path d="M5.5 5.5L7.2 7.2" />
-                  <path d="M16.8 16.8L18.5 18.5" />
-                  <path d="M18.5 5.5L16.8 7.2" />
-                  <path d="M7.2 16.8L5.5 18.5" />
-                </g>
-              </svg>
-            )}
-          </button>
-        </div>
-      </div>
+      <SlideRail
+        presentation={presentation}
+        currentSlideIndex={currentSlideIndex}
+        isNight={isNight}
+        uiSurface={uiSurface}
+        uiBorder={uiBorder}
+        uiSurfaceStrong={uiSurfaceStrong}
+        uiPanelShadow={uiPanelShadow}
+        handleReorder={handleReorder}
+        goToSlide={goToSlide}
+        deleteSlide={deleteSlide}
+        addSlide={addSlide}
+        themeMode={themeMode}
+        setThemeMode={setThemeMode}
+      />
 
       <div
         className="flex-1 min-w-0 flex flex-col"
@@ -324,7 +186,7 @@ export function DesignView() {
           ) : (
             slide && (
               <>
-                <SlideStagePanel
+                <MainCanvas
                   slide={slide}
                   currentSlideIndex={currentSlideIndex}
                   totalSlides={totalSlides}
@@ -395,7 +257,7 @@ export function DesignView() {
                   <textarea
                     className="gen-input"
                     rows={3}
-                    value={slide.speakerNotes}
+                    value={slide.speakerNotes || ''}
                     onChange={(e) => updateSlide(currentSlideIndex, { speakerNotes: e.target.value })}
                     placeholder="스크립트를 작성하세요"
                     style={{
@@ -466,370 +328,3 @@ export function DesignView() {
     </div>
   );
 }
-
-/* ---------------------------------------------------------------- */
-
-
-
-
-
-
-
-
-
-
-/** Strip markdown title lines for slide-rail subtitle preview */
-
-
-
-/* ---------------------------------------------------------------- */
-
-function SlideStagePanel({
-  slide,
-  currentSlideIndex: _currentSlideIndex,
-  totalSlides: _totalSlides,
-  canvasMode,
-  isNight,
-  onUpdateSlide,
-  hasGeneratedVoice,
-  isVoicePlaying,
-  onPlayGeneratedVoice,
-}: {
-  slide: Slide;
-  currentSlideIndex: number;
-  totalSlides: number;
-  canvasMode: 'preview' | 'slides';
-  isNight: boolean;
-  onUpdateSlide: (patch: Partial<Slide>) => void;
-  hasGeneratedVoice: boolean;
-  isVoicePlaying: boolean;
-  onPlayGeneratedVoice: () => void;
-}) {
-  const stageCanvasRef = useRef<HTMLDivElement>(null);
-  const [selectedMediaUrl, setSelectedMediaUrl] = useState<string | null>(null);
-  const [mediaPtr, setMediaPtr] = useState<
-    | { kind: 'move'; url: string; ptrOffsetX: number; ptrOffsetY: number; w: number; h: number }
-    | { kind: 'resize'; url: string; base: { x: number; y: number; w: number; h: number }; sx: number; sy: number }
-    | null
-  >(null);
-
-  const slideRef = useRef(slide);
-  slideRef.current = slide;
-  const mediaPtrRef = useRef(mediaPtr);
-  mediaPtrRef.current = mediaPtr;
-
-  const parsed = parseContentLines(slide.content || '');
-  const viewMode = canvasMode === 'slides' ? 'wireframe' : 'render';
-  const legacyBackgroundMedia = (slide.media ?? []).find(
-    (m) => m.kind === 'image'
-      && (
-        (m.name || '').toLowerCase().includes('reactbits background')
-        || m.url.includes('reactbits.dev/backgrounds')
-      ),
-  );
-  const visualMediaItems = (slide.media ?? []).filter((m) => {
-    if (m.kind !== 'image' && m.kind !== 'video') return false;
-    if (legacyBackgroundMedia && m.url === legacyBackgroundMedia.url) return false;
-    return true;
-  });
-  const mediaLayoutDefault = (m: SlideMedia, index: number) =>
-    m.layout ?? (index === 0 ? { x: 4, y: 4, w: 92, h: 40 } : { x: 8, y: 48, w: 84, h: 36 });
-
-  const applyMediaLayout = useCallback(
-    (url: string, layout: { x: number; y: number; w: number; h: number }) => {
-      const next = layout;
-      const clamped = {
-        x: Math.max(0, Math.min(94, next.x)),
-        y: Math.max(0, Math.min(94, next.y)),
-        w: Math.max(8, Math.min(100 - next.x, next.w)),
-        h: Math.max(8, Math.min(100 - next.y, next.h)),
-      };
-      const s = slideRef.current;
-      onUpdateSlide({
-        media: (s.media ?? []).map((item) => (item.url === url ? { ...item, layout: clamped } : item)),
-      });
-    },
-    [onUpdateSlide],
-  );
-
-  useEffect(() => {
-    if (!mediaPtr) return;
-    const onMove = (e: PointerEvent) => {
-      const p = mediaPtrRef.current;
-      if (!p) return;
-      const stage = stageCanvasRef.current;
-      if (!stage) return;
-      const r = stage.getBoundingClientRect();
-      if (r.width < 1 || r.height < 1) return;
-      if (p.kind === 'move') {
-        const xPct = ((e.clientX - p.ptrOffsetX - r.left) / r.width) * 100;
-        const yPct = ((e.clientY - p.ptrOffsetY - r.top) / r.height) * 100;
-        applyMediaLayout(p.url, {
-          x: Math.max(0, Math.min(100 - p.w, xPct)),
-          y: Math.max(0, Math.min(100 - p.h, yPct)),
-          w: p.w,
-          h: p.h,
-        });
-      } else {
-        const dx = ((e.clientX - p.sx) / r.width) * 100;
-        const dy = ((e.clientY - p.sy) / r.height) * 100;
-        applyMediaLayout(p.url, {
-          x: p.base.x,
-          y: p.base.y,
-          w: p.base.w + dx,
-          h: p.base.h + dy,
-        });
-      }
-    };
-    const onUp = () => setMediaPtr(null);
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-  }, [mediaPtr, applyMediaLayout]);
-
-  useEffect(() => {
-    const onDocPointerDown = (e: PointerEvent) => {
-      const el = stageCanvasRef.current;
-      if (!el || el.contains(e.target as Node)) return;
-      setSelectedMediaUrl(null);
-    };
-    window.addEventListener('pointerdown', onDocPointerDown);
-    return () => window.removeEventListener('pointerdown', onDocPointerDown);
-  }, []);
-  const hasBackground = Boolean(slide.background?.kind);
-  const backgroundKind = slide.background?.kind;
-  const hasProceduralBackground = backgroundKind === 'darkVeil'
-    || backgroundKind === 'grainient'
-    || backgroundKind === 'particles'
-    || backgroundKind === 'iridescence';
-  
-  const hasCustomVideoBackground = backgroundKind === 'customVideo';
-  const solidBackgroundColor = backgroundKind === 'solidBlack'
-    ? '#000000'
-    : backgroundKind === 'solidWhite'
-      ? '#ffffff'
-      : undefined;
-  const customBackgroundImage = backgroundKind === 'customImage'
-    ? String(slide.background?.params?.imageUrl ?? '')
-    : '';
-  const isDarkBg = backgroundKind === 'darkVeil'
-    || backgroundKind === 'particles'
-    || backgroundKind === 'iridescence'
-    || backgroundKind === 'grainient'
-    || backgroundKind === 'solidBlack'
-    || backgroundKind === 'customVideo'
-    || backgroundKind === 'customImage';
-  const textColor = isDarkBg ? '#f5f7ff' : '#111111';
-  const subTextColor = isDarkBg ? 'rgba(245,247,255,0.88)' : '#2f2f2f';
-  const textShadow = isDarkBg ? '0 1px 2px rgba(0,0,0,0.45)' : '0 1px 2px rgba(255,255,255,0.4)';
-  return (
-    <div style={{
-      border: isNight ? '1px solid #2b2f39' : '1px solid #c5ccd6',
-      background: isNight ? '#1f2633' : '#f2f4f8',
-      padding: 10,
-    }}
-    >
-      <div
-        style={{
-          width: '100%',
-          height: 'clamp(340px, 62vh, 620px)',
-          background: isNight ? '#252b36' : '#e4e8ef',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          position: 'relative',
-        }}
-      >
-        <div
-          id="design-slide-export-root"
-          ref={stageCanvasRef}
-          style={{
-            width: 'min(100%, calc(clamp(340px, 62vh, 620px) * 16 / 9))',
-            height: 'auto',
-            aspectRatio: '16 / 9',
-            background: solidBackgroundColor ?? (hasBackground ? 'transparent' : '#ffffff'),
-            border: '1px solid #e4e4e4',
-            overflow: 'hidden',
-            position: 'relative',
-          }}
-        >
-          {hasProceduralBackground ? (
-            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-              <SlideBackgroundLayer kind={slide.background?.kind} params={slide.background?.params} />
-            </div>
-          ) : null}
-          {hasCustomVideoBackground ? (
-            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-              <video
-                src={slide.background?.params?.url as string || '/vid.mp4'}
-                autoPlay
-                loop
-                muted
-                playsInline
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', pointerEvents: 'none' }} />
-            </div>
-          ) : null}
-          {customBackgroundImage ? (
-            <img
-              src={customBackgroundImage}
-              alt=""
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
-            />
-          ) : null}
-          {canvasMode === 'preview'
-            && visualMediaItems.map((m, mediaIdx) => {
-              const L = mediaLayoutDefault(m, mediaIdx);
-              const selected = selectedMediaUrl === m.url;
-              return (
-                <div
-                  key={`${m.url}-${mediaIdx}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedMediaUrl(m.url);
-                  }}
-                  onPointerDown={(e) => {
-                    if ((e.target as HTMLElement).closest('[data-media-resize]')) return;
-                    const stage = stageCanvasRef.current;
-                    if (!stage) return;
-                    const r = stage.getBoundingClientRect();
-                    if (r.width < 1 || r.height < 1) return;
-                    e.stopPropagation();
-                    setSelectedMediaUrl(m.url);
-                    setMediaPtr({
-                      kind: 'move',
-                      url: m.url,
-                      ptrOffsetX: e.clientX - (r.left + (L.x / 100) * r.width),
-                      ptrOffsetY: e.clientY - (r.top + (L.y / 100) * r.height),
-                      w: L.w,
-                      h: L.h,
-                    });
-                  }}
-                  style={{
-                    position: 'absolute',
-                    left: `${L.x}%`,
-                    top: `${L.y}%`,
-                    width: `${L.w}%`,
-                    height: `${L.h}%`,
-                    zIndex: 2,
-                    boxSizing: 'border-box',
-                    border: selected ? '2px solid #5f9dff' : '1px solid rgba(228,228,228,0.85)',
-                    borderRadius: 4,
-                    overflow: 'hidden',
-                    cursor: mediaPtr?.url === m.url && mediaPtr.kind === 'move' ? 'grabbing' : 'grab',
-                    background: 'rgba(0,0,0,0.04)',
-                  }}
-                >
-                  {m.kind === 'video' ? (
-                    <video
-                      src={m.url}
-                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', pointerEvents: 'none' }}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                    />
-                  ) : (
-                    <img
-                      src={m.url}
-                      alt={m.name || ''}
-                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', pointerEvents: 'none' }}
-                    />
-                  )}
-                  {selected ? (
-                    <div
-                      data-media-resize
-                      onPointerDown={(e) => {
-                        e.stopPropagation();
-                        const stage = stageCanvasRef.current;
-                        if (!stage) return;
-                        setMediaPtr({
-                          kind: 'resize',
-                          url: m.url,
-                          base: { ...L },
-                          sx: e.clientX,
-                          sy: e.clientY,
-                        });
-                      }}
-                      style={{
-                        position: 'absolute',
-                        right: -2,
-                        bottom: -2,
-                        width: 12,
-                        height: 12,
-                        borderRadius: 2,
-                        background: '#5f9dff',
-                        border: '1px solid #0f1420',
-                        cursor: 'nwse-resize',
-                        zIndex: 3,
-                      }}
-                    />
-                  ) : null}
-                </div>
-              );
-            })}
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              padding: 10,
-              overflow: 'hidden',
-              pointerEvents: canvasMode === 'preview' && visualMediaItems.length > 0 ? 'none' : 'auto',
-            }}
-          >
-            <SlideTemplateCanvas
-              slide={slide}
-              parsed={parsed}
-              mode={viewMode}
-              textColor={textColor}
-              subTextColor={subTextColor}
-              textShadow={textShadow}
-              onUpdateSlide={onUpdateSlide}
-              pointerThroughCanvas={canvasMode === 'preview' && visualMediaItems.length > 0}
-            />
-          </div>
-          {hasGeneratedVoice && (
-            <button
-              type="button"
-              data-export-hide
-              onClick={onPlayGeneratedVoice}
-              title="Play generated voice"
-              style={{
-                position: 'absolute',
-                left: 12,
-                bottom: 12,
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                border: '1px solid rgba(95,157,255,0.9)',
-                background: 'rgba(13,20,35,0.75)',
-                color: '#f5f7ff',
-                fontSize: 14,
-                cursor: 'pointer',
-                zIndex: 3,
-              }}
-            >
-              {isVoicePlaying ? '⏸' : '🔊'}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-
-/* ---------------------------------------------------------------- */
-
-
-
-/* ---------------------------------------------------------------- */
-
-
-

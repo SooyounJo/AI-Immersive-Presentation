@@ -12,13 +12,13 @@ import { usePresentationStore } from '../stores/presentationStore';
  */
 export function SlideAgentPresence() {
   const { agentMode, agentVisible } = usePresentationStore();
-  if (!agentVisible) return null;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const modeRef = useRef(agentMode);
 
   useEffect(() => { modeRef.current = agentMode; }, [agentMode]);
 
   useEffect(() => {
+    if (!agentVisible) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -131,7 +131,9 @@ export function SlideAgentPresence() {
     };
     draw();
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [agentVisible]);
+
+  if (!agentVisible) return null;
 
   // Status label only appears when agent is engaged (stays out of the way in idle)
   const statusLabel: Record<string, string | null> = {
